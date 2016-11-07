@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<head>
+  <link rel="stylesheet" type="text/css" href="style.css" media="screen" />
+</head>
+
+<body>
+  <script src="d3.v3.min.js"></script>
+  <script src="model.js"></script>
+  <script src="datacenter.js"></script>
+  <script src="node.js"></script>
+  <script src="range.js"></script>
+  <script src="replica.js"></script>
+  <script src="request.js"></script>
+  <script src="app.js"></script>
+  <script src="visualization.js"></script>
+  <p>Model 0:</p>
+  <div id="model0"></div>
+  <p>Model 1:</p>
+  <div id="model1"></div>
+  <script>
+
+// This file declares models which will be matched to the html <div>
+// elements according to the model ID. Models are named sequentially
+// as "model0", "model1", etc.
+
+model0 = new Model(viewWidth, viewHeight)
+model0.nodeRadius = 25
+model0.nodeDistance = 100
+new Datacenter(viewWidth * 0.25, viewHeight * 0.30, model0)
+new Datacenter(viewWidth * 0.5, viewHeight * 0.70, model0)
+new Datacenter(viewWidth * 0.75, viewHeight * 0.30, model0)
+addModel(model0, true)
+for (var i = 0; i < model0.datacenters.length; i++) {
+  for (var j = 0; j < 6; j++) {
+    addNodeToModel(model0, model0.datacenters[i])
+  }
+  //addAppToModel(model0, model0.datacenters[i])
+}
+
+model1 = new Model(viewWidth, viewHeight * 1.33)
+model1.nodeRadius = 20
+model1.nodeDistance = 80
+new Datacenter(viewWidth * 0.2, viewHeight * 0.50, model1)
+new Datacenter(viewWidth * 0.33, viewHeight * 0.933, model1)
+new Datacenter(viewWidth * 0.5, viewHeight * 0.333, model1)
+new Datacenter(viewWidth * 0.66, viewHeight * 0.933, model1)
+new Datacenter(viewWidth * 0.8, viewHeight * 0.50, model1)
+addModel(model1, true)
+for (var i = 0; i < model1.datacenters.length; i++) {
+  for (var j = 0; j < 5; j++) {
+    addNodeToModel(model1, model1.datacenters[i])
+  }
+  addAppToModel(model1, model1.datacenters[i])
+}
+
+  </script>
+</body>
