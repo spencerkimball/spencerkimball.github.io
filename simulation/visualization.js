@@ -106,30 +106,23 @@ function layoutModel(model) {
   }
 
   forceNodeSel = forceNodeSel.data(model.force.nodes(), function(d) { return d.id })
-  forceNodeSel.enter().append("g")
-    .attr("id", function(d) { return d.id })
-    .attr("class", "forcenode")
-    .attr("transform", function(d) { return "translate(-" + d.radius + ",-" + d.radius + ")" })
-    .append("circle")
-    .attr("r", function(d) { return d.radius })
-    //.on("click", function(d) { d.clicked() })
-    .attr("class", function(d) { return d.clazz })
-    .call(model.force.drag)
+  model.skin.node(model, forceNodeSel.enter().append("g")
+                  .attr("id", function(d) { return d.id })
+                  .attr("class", "forcenode")
+                  .attr("transform", function(d) { return "translate(-" + d.radius + ",-" + d.radius + ")" }))
   forceNodeSel.exit().remove()
 
   forceLinkSel = forceLinkSel.data(model.force.links(), function(d) { return d.source.id + "-" + d.target.id })
   forceLinkSel.enter().insert("line", ".node")
     .attr("id", function(d) { return d.source.id + "-" + d.target.id })
-    .attr("class", "forcelink")
-    .style("stroke-width", function(d) { return d.weight })
+    .attr("class", function(d) { return "forcelink " + d.clazz })
   forceLinkSel.exit().remove()
   forceLinkSel.moveToBack()
 
   linkSel = linkSel.data(model.links, function(d) { return d.source.id + "-" + d.target.id })
   linkSel.enter().insert("line", ".node")
     .attr("id", function(d) { return d.source.id + "-" + d.target.id })
-    .attr("class", "link")
-    .style("stroke-width", function(d) { return d.weight })
+    .attr("class", function(d) { return "link " + d.clazz })
   linkSel.exit().remove()
   linkSel.moveToBack()
 
@@ -172,26 +165,7 @@ function gravity(alpha, dc) {
 
 function packRanges(model, n) {
   if (model.svg == null) return
-
-  var packed = d3.layout.pack()
-      .size([n.radius - 4, n.radius - 4])
-      .value(function(d) { return d.size })
-      .radius(model.replicaRadius.bind(model))
-      .nodes({children: n.children, size: 0})
-  packed.shift()
-
-  var sel = model.svg.select("#" + n.id).selectAll(".range").data(packed, function(d) { return d.range.id })
-  sel.enter().append("circle")
-    .attr("class", "range")
-    .attr("id", function(d) { return d.range.id })
-    .style("fill", function(d) { return d.color })
-  sel.exit().remove()
-  sel.transition()
-    .duration(250 * timeScale)
-    .attr("cx", function(d) { return d.x - n.radius / 2 + 2 })
-    .attr("cy", function(d) { return d.y - n.radius / 2 + 2 })
-    .attr("r", function(d) { return d.r })
-    .style("stroke-width", function(d) { return d.flushed ? 0 : 1 })
+  model.skin.packRanges(model, n, model.svg.select("#" + n.id).selectAll(".range"))
 }
 
 function setAppClass(model, n) {

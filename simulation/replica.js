@@ -235,12 +235,12 @@ Replica.prototype.chooseRebalanceTarget = function(filterFn, scoreFn) {
   var candidates = []
   for (var i = 0; i < dc.roachNodes.length; i++) {
     var rn = dc.roachNodes[i]
+    mean += rn.nonSplitting()
     // Skip any nodes which are currently busy rebalancing or already part of the range.
     if (rn.down() || rn.busy || (rn.id in repExist) || !filterFn(rn)) continue
-    mean += rn.nonSplitting()
     candidates.push(rn)
   }
-  mean /= candidates.length
+  mean /= dc.roachNodes.length
 
   var reqDistance = 0.5
   if (this.model.exactRebalancing) {

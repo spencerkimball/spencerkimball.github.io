@@ -1,6 +1,7 @@
 // This file defines a simple model for describing a CockroachDB cluster.
 
 var modelCount = 0
+var models = []
 
 function Model(id, width, height, initFn) {
   this.index = modelCount++
@@ -10,7 +11,6 @@ function Model(id, width, height, initFn) {
   this.initFn = initFn
   this.nodeRadius = 35
   this.appRadius = 10
-  this.maxNodes = 7
   this.nodeDistance = 150
   this.interNodeDistance = 25
   this.nodeCapacity = 3.0
@@ -37,10 +37,12 @@ function Model(id, width, height, initFn) {
   this.stopped = true
   this.played = false
 
+  this.skin = new Circles()
   this.force = null
   this.forceNodes = []
   this.forceLinks = []
   this.links = []
+  models.push(this)
 
   if (initFn != null) {
     initFn(this)
@@ -132,7 +134,7 @@ Model.prototype.elapsed = function() {
 }
 
 Model.prototype.appDistance = function() {
-  return this.nodeRadius + this.appRadius * 1.5
+  return this.nodeRadius * 4 + this.appRadius
 }
 
 Model.prototype.capConstant = function() {
@@ -234,13 +236,11 @@ function addAppToModel(model, dc) {
   var y = offset[1]
 
   // Create the new application, identified by app ID.
-  var l = {source: null, target: rn, weight: 1, distance: model.appDistance(), latency: model.dcLatency}
+  var l = {source: null, target: rn, clazz: "applink", distance: model.appDistance(), latency: model.dcLatency}
   var app = new App(dc.id + "app" + dc.apps.length, x, y, l, rn, model, dc)
   return app
 }
 
-// TODO(spencer): re-enable
-/*
 function restart(modelIdx) {
   var model = models[modelIdx]
   model.restart()
@@ -249,10 +249,6 @@ function restart(modelIdx) {
 function addNode(modelIdx, dcIdx) {
   var model = models[modelIdx]
   var dc = model.datacenters[dcIdx]
-  if (dc.roachNodes.length == model.maxNodes) {
-    alert("Cannot exceed " + model.maxNodes + " nodes!")
-    return
-  }
   addNodeToModel(model, dc)
 }
 
@@ -269,4 +265,3 @@ function addApp(modelIdx, dcIdx) {
   }
   addAppToModel(model, dc)
 }
-*/

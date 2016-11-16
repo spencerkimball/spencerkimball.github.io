@@ -16,7 +16,7 @@
 }
 
 .stats {
-    font: 20px helvetica;
+    font: 14px helvetica;
     font-weight: bold
 }
 
@@ -51,7 +51,7 @@
 }
 
 .roachnode {
-    stroke: #000;
+    stroke: #333;
     stroke-width: 1px;
     fill: #fff;
 }
@@ -77,11 +77,29 @@
 .forcelink {
     stroke: #999;
     stroke-opacity: 0.6;
+    stroke-width: 0;
 }
 
 .link {
     stroke: #aaa;
     stroke-opacity: 0.6;
+}
+
+.dclink {
+    stroke-width: 1px;
+}
+
+.switchlink {
+    stroke-width: 0.5px;
+}
+
+.nodelink {
+    stroke-width: 0px;
+    stroke-dasharray: 3,3;
+}
+
+.applink {
+    stroke-width: 1px;
 }
 
 .request {

@@ -15,10 +15,12 @@
   <script src="request.js"></script>
   <script src="app.js"></script>
   <script src="visualization.js"></script>
+  <script src="boxes.js"></script>
+  <script src="circles.js"></script>
   <table width=100%>
     <tr>
-      <td width=50%><div align="center" class="heading">Exact Mean</div></td>
-      <td width=50%><div align="center" class="heading">Threshold of Mean</div></td>
+      <td width=50%><div align="center" class="heading">Naive Raft</div></td>
+      <td width=50%><div align="center" class="heading">Quiescing Raft</div></td>
     </tr>
     <tr>
       <td width=50%><div id="model0"></div></td>
@@ -28,32 +30,34 @@
 
   <script>
 
-function initModel(model, exactRebalancing) {
+function initModel(model, quiesceRaft) {
   var numNodes = 10
   model.nodeRadius = 30
   model.nodeDistance = 175
-  model.nodeCapacity = 7
+  model.appXfer = 10000 // 10s
+  model.nodeCapacity = 6
   model.useSwitches = false
-  model.exactRebalancing = exactRebalancing
+  model.showHeartbeats = true
+  model.quiesceRaft = quiesceRaft
   model.simTime = 45000 // 45s
   var dc = new Datacenter(viewWidth * 0.25, viewHeight * 0.50, model)
   for (var i = 0; i < numNodes; i++) {
     addNodeToModel(model, dc)
+    addAppToModel(model, dc)
   }
-
-  // Create 16 ranges, with three replicas each. Distribute them in an
-  // unbalanced fashion across first five nodes.
-  for (var i = 0; i < 16; i++) {
+  // Create 10 ranges, with three replicas each. Distribute them in a balanced fashion.
+  for (var i = 0; i < 10; i++) {
     var range = new Range(model)
     for (var j = 0; j < 3; j++) {
-      var replica = new Replica(0.5, range, dc.roachNodes[(i*3+j)%5], true, model)
+      var replica = new Replica(0.5, range, dc.roachNodes[((i*3)+j)%numNodes], true, model)
+      replica.setTimeout(500 * Math.random())
     }
   }
   addModel(model, false)
 }
 
-new Model("model0", viewWidth/2, viewHeight, function(m) { initModel(m, true) })
-new Model("model1", viewWidth/2, viewHeight, function(m) { initModel(m, false) })
+new Model("model0", viewWidth/2, viewHeight, function(m) { initModel(m, false) })
+new Model("model1", viewWidth/2, viewHeight, function(m) { initModel(m, true) })
 
   </script>
 </body>

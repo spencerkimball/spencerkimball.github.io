@@ -16,9 +16,9 @@ function Datacenter(cx, cy, model) {
   for (var i = 0; i < this.model.datacenters.length; i++) {
     var dc = this.model.datacenters[i]
     latency = 4000 * Math.sqrt((cx - dc.cx) * (cx - dc.cx) + (cy - dc.cy) * (cy - dc.cy)) / viewWidth
-    var l = {id: "link" + this.model.linkCount++, source: this.blackHole, target: dc.blackHole, weight: 0.1, latency: latency}
+    var l = {id: "link" + this.model.linkCount++, source: this.blackHole, target: dc.blackHole, clazz: "dclink", latency: latency}
     this.blackHole.links[dc.blackHole.id] = l
-    var rl = {id: "link" + this.model.linkCount++, source: dc.blackHole, target: this.blackHole, weight: 0.1, latency: latency}
+    var rl = {id: "link" + this.model.linkCount++, source: dc.blackHole, target: this.blackHole, clazz: "dclink", latency: latency}
     dc.blackHole.links[this.blackHole.id] = rl
     // Use non-force links.
     this.model.links.push(l)
@@ -31,13 +31,13 @@ function Datacenter(cx, cy, model) {
 
 Datacenter.prototype.addNode = function(rn) {
   // Link this node to the blackHole.
-  var weight = 0.1
+  var clazz = "switchlink"
   if (!this.model.useSwitches) {
-    weight = 0
+    clazz = ""
   }
-  l = {id: "link" + this.model.linkCount++, source: rn, target: this.blackHole, weight: weight, distance: this.model.nodeDistance, latency: this.model.dcLatency}
+  l = {id: "link" + this.model.linkCount++, source: rn, target: this.blackHole, clazz: clazz, distance: this.model.nodeDistance, latency: this.model.dcLatency}
   rn.links[this.blackHole.id] = l
-  rl = {id: "link" + this.model.linkCount++, source: this.blackHole, target: rn, weight: weight, distance: this.model.nodeDistance, latency: this.model.dcLatency}
+  rl = {id: "link" + this.model.linkCount++, source: this.blackHole, target: rn, clazz: clazz, distance: this.model.nodeDistance, latency: this.model.dcLatency}
   this.blackHole.links[rn.id] = rl
   this.model.forceLinks.push(l)
   this.model.forceLinks.push(rl)
@@ -94,9 +94,9 @@ Datacenter.prototype.buildInterNodeLinks = function() {
       var interNodeDistance = Math.abs((2 * this.model.nodeDistance) * Math.sin(angle))
       //console.log("internodedistance: " + interNodeDistance + ", angle: " + angle)
       if (!(target.id in source.links)) {
-        var l = {id: "link" + this.model.linkCount++, source: source, target: target, weight: 0, latency: this.model.dcLatency}
+        var l = {id: "link" + this.model.linkCount++, source: source, target: target, clazz: "nodelink", latency: this.model.dcLatency}
         source.links[target.id] = l
-        var rl = {id: "link" + this.model.linkCount++, source: target, target: source, weight: 0, latency: this.model.dcLatency}
+        var rl = {id: "link" + this.model.linkCount++, source: target, target: source, clazz: "nodelink", latency: this.model.dcLatency}
         target.links[source.id] = rl
         this.model.forceLinks.push(source.links[target.id])
         this.model.forceLinks.push(target.links[source.id])
@@ -110,7 +110,7 @@ Datacenter.prototype.buildInterNodeLinks = function() {
 Datacenter.prototype.addApp = function(app) {
   if (this.blackHole != null) {
     // Link to blackHole node.
-    app.blackholeLink = {source: app, target: this.blackHole, weight: 0, distance: this.model.nodeDistance + this.model.appDistance(), latency: 0.25}
+    app.blackholeLink = {source: app, target: this.blackHole, clazz: "", distance: this.model.nodeDistance + this.model.appDistance(), latency: 0.25}
     this.model.forceLinks.push(app.blackholeLink)
   }
 
