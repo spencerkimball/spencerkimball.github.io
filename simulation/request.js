@@ -54,15 +54,15 @@ Request.prototype.route = function(sourceNode, endFn) {
     return
   }
   // Need to route to a new datacenter...
-  if (sourceNode.id.startsWith("blackhole")) {
+  if (sourceNode.id.startsWith("datacenter")) {
     // Datacenter to datacenter.
-    this.writeDirect(sourceNode, destNode.dc.blackHole, endFn)
+    this.writeDirect(sourceNode, destNode.dc.dcNode, endFn)
   } else if (sourceNode.id.startsWith(sourceNode.dc.id + "app")) {
     // App to app's node.
     this.writeDirect(sourceNode, sourceNode.roachNode, endFn)
   } else {
-    // If we're not at a black hole, go to the one in our datacenter first.
-    this.writeDirect(sourceNode, sourceNode.dc.blackHole, endFn)
+    // If we're not at a datacenter switch, go to the one in our datacenter first.
+    this.writeDirect(sourceNode, sourceNode.dc.dcNode, endFn)
   }
 }
 

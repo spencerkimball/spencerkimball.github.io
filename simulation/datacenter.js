@@ -1,25 +1,25 @@
-function Datacenter(cx, cy, model) {
+function Datacenter(longitude, latitude, model) {
   this.index = model.dcCount++
   this.id = "dc" + this.index
-  this.cx = cx
-  this.cy = cy
   this.apps = []
   this.roachNodes = []
   this.model = model
-  this.blackHole = {id: "blackhole" + this.index, x: this.cx, y: this.cy, fixed: true, radius: 3, clazz: "switch", dc: this, links: {}}
-  this.model.forceNodes.push(this.blackHole)
+  this.location = model.projection([longitude, latitude])
+  this.dcNode = {id: "datacenter" + this.index, x: this.location[0], y: this.location[1], fixed: true, radius: 3, clazz: "datacenter", dc: this, links: {}}
+  this.model.forceNodes.push(this.dcNode)
   if (!this.model.useSwitches) {
-    this.blackHole.radius = 0
+    this.dcNode.radius = 0
   }
 
   // Link this datacenter to all others.
   for (var i = 0; i < this.model.datacenters.length; i++) {
     var dc = this.model.datacenters[i]
-    latency = 4000 * Math.sqrt((cx - dc.cx) * (cx - dc.cx) + (cy - dc.cy) * (cy - dc.cy)) / viewWidth
-    var l = {id: "link" + this.model.linkCount++, source: this.blackHole, target: dc.blackHole, clazz: "dclink", latency: latency}
-    this.blackHole.links[dc.blackHole.id] = l
-    var rl = {id: "link" + this.model.linkCount++, source: dc.blackHole, target: this.blackHole, clazz: "dclink", latency: latency}
-    dc.blackHole.links[this.blackHole.id] = rl
+    latency = 4000 * Math.sqrt((this.location[0] - dc.location[0]) * (this.location[0] - dc.location[0]) +
+                               (this.location[1] - dc.location[1]) * (this.location[1] - dc.location[1])) / viewWidth
+    var l = {id: "link" + this.model.linkCount++, source: this.dcNode, target: dc.dcNode, clazz: "dclink", latency: latency}
+    this.dcNode.links[dc.dcNode.id] = l
+    var rl = {id: "link" + this.model.linkCount++, source: dc.dcNode, target: this.dcNode, clazz: "dclink", latency: latency}
+    dc.dcNode.links[this.dcNode.id] = rl
     // Use non-force links.
     this.model.links.push(l)
     this.model.links.push(rl)
@@ -30,15 +30,15 @@ function Datacenter(cx, cy, model) {
 }
 
 Datacenter.prototype.addNode = function(rn) {
-  // Link this node to the blackHole.
+  // Link this node to the node.
   var clazz = "switchlink"
   if (!this.model.useSwitches) {
     clazz = ""
   }
-  l = {id: "link" + this.model.linkCount++, source: rn, target: this.blackHole, clazz: clazz, distance: this.model.nodeDistance, latency: this.model.dcLatency}
-  rn.links[this.blackHole.id] = l
-  rl = {id: "link" + this.model.linkCount++, source: this.blackHole, target: rn, clazz: clazz, distance: this.model.nodeDistance, latency: this.model.dcLatency}
-  this.blackHole.links[rn.id] = rl
+  l = {id: "link" + this.model.linkCount++, source: rn, target: this.dcNode, clazz: clazz, distance: this.model.nodeDistance, latency: this.model.dcLatency}
+  rn.links[this.dcNode.id] = l
+  rl = {id: "link" + this.model.linkCount++, source: this.dcNode, target: rn, clazz: clazz, distance: this.model.nodeDistance, latency: this.model.dcLatency}
+  this.dcNode.links[rn.id] = rl
   this.model.forceLinks.push(l)
   this.model.forceLinks.push(rl)
 
@@ -111,10 +111,10 @@ Datacenter.prototype.buildInterNodeLinks = function() {
 // requests directly from the gateway node they're connected to.
 Datacenter.prototype.addApp = function(app) {
   /*
-  if (this.blackHole != null) {
-    // Link to blackHole node.
-    app.blackholeLink = {source: app, target: this.blackHole, clazz: "", distance: this.model.nodeDistance + this.model.appDistance(), latency: 0.25}
-    this.model.forceLinks.push(app.blackholeLink)
+  if (this.dcNode != null) {
+    // Link to node node.
+    app.datacenterLink = {source: app, target: this.dcNode, clazz: "", distance: this.model.nodeDistance + this.model.appDistance(), latency: 0.25}
+    this.model.forceLinks.push(app.datacenterLink)
   }
 
   // Add link from app to node.
@@ -140,8 +140,8 @@ Datacenter.prototype.removeApp = function(app) {
   if (index != -1) {
     this.model.forceLinks.splice(index, 1)
   }
-  if (app.blackholeLink != null) {
-    index = this.model.forceLinks.indexOf(app.blackholeLink)
+  if (app.datacenterLink != null) {
+    index = this.model.forceLinks.indexOf(app.datacenterLink)
     if (index != -1) {
       this.model.forceLinks.splice(index, 1)
     }

@@ -52,7 +52,7 @@
 
 .roachnode {
     stroke: #333;
-    stroke-width: 2px;
+    stroke-width: 1.5px;
     fill: red;
     fill: url("#fullnessGradient0");
 }
@@ -63,7 +63,7 @@
     stroke-width: 1px;
 }
 
-.switch {
+.datacenter {
     fill: #ccc;
 }
 
@@ -82,15 +82,17 @@
 }
 
 .link {
-    stroke: #aaa;
+    stroke: #66a;
     stroke-opacity: 0.6;
 }
 
 .dclink {
+    stroke: #33c
     stroke-width: 0.1px;
 }
 
 .switchlink {
+    stroke: #33a;
     stroke-width: 0.05px;
 }
 
@@ -114,4 +116,9 @@
 .node-full {
     fill: #f00;
     fill-opacity: 0.2;
+}
+
+path {
+    fill: #fff;
+    stroke:#ccc;
 }

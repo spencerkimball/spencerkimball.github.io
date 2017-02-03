@@ -25,17 +25,12 @@ function addModel(model) {
     .attr("preserveAspectRatio", "xMinYMin meet")
     .attr("viewBox", "0 0 " + model.width + " " + model.height)
       .classed("model-content-responsive", true)
+
+  layoutProjection(model)
+
   model.svg = model.svgParent.append("g")
   model.defs = model.svg.append("defs")
   model.skin.init(model)
-
-  if (model.geoProjection == "world") {
-    addWorldProjection(model)
-  } else if (model.geoProjection == "usa") {
-    addUSAProjection(model)
-  } else if (model.geoProjection == "eu") {
-    throw new error("unimplemented")
-  }
 
   if (model.displaySimState) {
     model.rpcSendCount = 0
@@ -62,16 +57,16 @@ function addModel(model) {
 
   // Add control group to hold play or reload button.
   if (model.enablePlayAndReload) {
-  model.controls = model.svgParent.append("g")
-  model.controls.append("rect")
-    .attr("class", "controlscreen")
-  model.controls.append("image")
-    .attr("class", "button-image")
-    .attr("x", "50%")
-    .attr("y", "50%")
-    .attr("width", 200)
-    .attr("height", 200)
-    .attr("transform", "translate(-100,-100)")
+    model.controls = model.svgParent.append("g")
+    model.controls.append("rect")
+      .attr("class", "controlscreen")
+    model.controls.append("image")
+      .attr("class", "button-image")
+      .attr("x", "50%")
+      .attr("y", "50%")
+      .attr("width", 200)
+      .attr("height", 200)
+      .attr("transform", "translate(-100,-100)")
       .on("click", function() { model.start() })
   }
 
@@ -102,30 +97,14 @@ function addModel(model) {
   }
 }
 
-function addWorldProjection(model) {
-  var projection = d3.geo.mercator();
+function layoutProjection(model) {
   var path = d3.geo.path()
-      .projection(projection);
-  var svg = d3.select("svg");
+      .projection(model.projection);
 
-  d3.json("https://spencerkimball.github.io/simulation/countries.json", function(error, collection) {
+  var projectionG = model.svgParent.append("g")
+  d3.json("https://spencerkimball.github.io/simulation/" + model.projectionName + ".json", function(error, collection) {
     if (error) throw error;
-    svg.selectAll("path")
-      .data(collection.features)
-      .enter().append("path")
-      .attr("d", path);
-  });
-}
-
-function addUSAProjection(model) {
-  var projection = d3.geo.albersUsa();
-  var path = d3.geo.path()
-      .projection(projection);
-  var svg = d3.select("svg");
-
-  d3.json("https://spencerkimball.github.io/simulation/us-states.json", function(error, collection) {
-    if (error) throw error;
-    svg.selectAll("path")
+    projectionG.selectAll("path")
       .data(collection.features)
       .enter().append("path")
       .attr("d", path);
@@ -208,8 +187,8 @@ function setNodeUnreachable(model, n, endFn) {
 
 function gravity(alpha, dc) {
   return function(d) {
-    d.x += (d.dc.cx - d.x) * alpha
-    d.y += (d.dc.cy - d.y) * alpha
+    d.x += (d.dc.location[0] - d.x) * alpha
+    d.y += (d.dc.location[1] - d.y) * alpha
   }
 }
 
@@ -224,7 +203,7 @@ function setAppClass(model, n) {
 
 function sendRequest(model, payload, link, reverse, endFn) {
   // Light up link connection to show activity.
-  if (link.source.clazz == "roachnode" || link.source.clazz == "switch") {
+  if (link.source.clazz == "roachnode" || link.source.clazz == "datacenter") {
     var stroke = "#aaa"
     if (payload instanceof HeartbeatPayload) {
       stroke = payload.color()

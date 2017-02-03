@@ -37,7 +37,8 @@ function Model(id, width, height, initFn) {
   this.stopped = true
   this.played = false
 
-  this.geoProjection = "none"
+  this.projectionName = "none"
+  this.projection = function(p) { return p }
   this.skin = new Circles()
   this.enablePlayAndReload = true
   this.enableAddNodeAndApp = false
@@ -108,8 +109,8 @@ Model.prototype.restart = function() {
   // Clean up each datacenter.
   for (var j = 0; j < this.datacenters.length; j++) {
     var dc = this.datacenters[j]
-    if (dc.blackHole != null) {
-      dc.blackHole.links = {}
+    if (dc.dcNode != null) {
+      dc.dcNode.links = {}
     }
     dc.apps = []
     dc.roachNodes = []
