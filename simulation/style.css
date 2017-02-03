@@ -52,8 +52,9 @@
 
 .roachnode {
     stroke: #333;
-    stroke-width: 1px;
-    fill: #fff;
+    stroke-width: 2px;
+    fill: red;
+    fill: url("#fullnessGradient0");
 }
 
 .app {
@@ -86,16 +87,16 @@
 }
 
 .dclink {
-    stroke-width: 1px;
+    stroke-width: 0.1px;
 }
 
 .switchlink {
-    stroke-width: 0.5px;
+    stroke-width: 0.05px;
 }
 
 .nodelink {
     stroke-width: 0px;
-    stroke-dasharray: 3,3;
+    /*stroke-dasharray: 3,3;*/
 }
 
 .applink {

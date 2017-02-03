@@ -10,7 +10,7 @@ function Model(id, width, height, initFn) {
   this.height = height
   this.initFn = initFn
   this.nodeRadius = 35
-  this.appRadius = 10
+  this.appRadius = 0
   this.nodeDistance = 150
   this.interNodeDistance = 25
   this.nodeCapacity = 3.0
@@ -37,7 +37,10 @@ function Model(id, width, height, initFn) {
   this.stopped = true
   this.played = false
 
+  this.geoProjection = "none"
   this.skin = new Circles()
+  this.enablePlayAndReload = true
+  this.enableAddNodeAndApp = false
   this.force = null
   this.forceNodes = []
   this.forceLinks = []
@@ -134,7 +137,7 @@ Model.prototype.elapsed = function() {
 }
 
 Model.prototype.appDistance = function() {
-  return this.nodeRadius * 4 + this.appRadius
+  return this.nodeRadius * 1.5 + this.appRadius
 }
 
 Model.prototype.capConstant = function() {

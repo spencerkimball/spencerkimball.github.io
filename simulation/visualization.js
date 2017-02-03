@@ -14,7 +14,7 @@ d3.selection.prototype.moveToBack = function() {
   })
 }
 
-function addModel(model, enableControls) {
+function addModel(model) {
   var div = d3.select("#" + model.id)
 
   model.svgParent = div.append("div")
@@ -26,29 +26,42 @@ function addModel(model, enableControls) {
     .attr("viewBox", "0 0 " + model.width + " " + model.height)
       .classed("model-content-responsive", true)
   model.svg = model.svgParent.append("g")
+  model.defs = model.svg.append("defs")
+  model.skin.init(model)
 
-  model.rpcSendCount = 0
-  model.svg.append("text")
-    .attr("class", "stats")
-    .attr("id", "rpc-count")
-    .attr("x", 20)
-    .attr("y", 32)
+  if (model.geoProjection == "world") {
+    addWorldProjection(model)
+  } else if (model.geoProjection == "usa") {
+    throw new error("unimplemented")
+  } else if (model.geoProjection == "eu") {
+    throw new error("unimplemented")
+  }
 
-  model.bytesXfer = 0
-  model.svg.append("text")
-    .attr("class", "stats")
-    .attr("id", "bytes-xfer")
-    .attr("x", 20)
-    .attr("y", 54)
+  if (model.displaySimState) {
+    model.rpcSendCount = 0
+    model.svg.append("text")
+      .attr("class", "stats")
+      .attr("id", "rpc-count")
+      .attr("x", 20)
+      .attr("y", 32)
 
-  model.svg.append("text")
-    .attr("class", "stats")
-    .attr("id", "elapsed")
-    .attr("x", model.width-20)
-    .attr("y", 32)
-    .style("text-anchor", "end")
+    model.bytesXfer = 0
+    model.svg.append("text")
+      .attr("class", "stats")
+      .attr("id", "bytes-xfer")
+      .attr("x", 20)
+      .attr("y", 54)
+
+    model.svg.append("text")
+      .attr("class", "stats")
+      .attr("id", "elapsed")
+      .attr("x", model.width-20)
+      .attr("y", 32)
+      .style("text-anchor", "end")
+  }
 
   // Add control group to hold play or reload button.
+  if (model.enablePlayAndReload) {
   model.controls = model.svgParent.append("g")
   model.controls.append("rect")
     .attr("class", "controlscreen")
@@ -59,11 +72,12 @@ function addModel(model, enableControls) {
     .attr("width", 200)
     .attr("height", 200)
     .attr("transform", "translate(-100,-100)")
-    .on("click", function() { model.start() })
+      .on("click", function() { model.start() })
+  }
 
   model.layout()
 
-  if (enableControls) {
+  if (model.enableAddNodeAndApp) {
     row = div.append("table")
       .attr("width", "100%")
       .append("tr")
@@ -82,6 +96,25 @@ function addModel(model, enableControls) {
         .attr("onclick", "addApp(" + model.index + ", " + i + ")")
     }
   }
+
+  if (!model.enablePlayAndReload) {
+    model.start()
+  }
+}
+
+function addWorldProjection(model) {
+  var projection = d3.geo.mercator();
+  var path = d3.geo.path()
+      .projection(projection);
+  var svg = d3.select("svg");
+
+  d3.json("https://spencerkimball.github.io/simulation/countries.json", function(error, collection) {
+    if (error) throw error;
+    svg.selectAll("path")
+      .data(collection.features)
+      .enter().append("path")
+      .attr("d", path);
+  });
 }
 
 function removeModel(model) {
@@ -126,11 +159,13 @@ function layoutModel(model) {
   linkSel.exit().remove()
   linkSel.moveToBack()
 
-  model.controls.transition()
-    .duration(100 * timeScale)
-    .attr("visibility", model.stopped ? "visible" : "hidden")
-  model.controls.select(".button-image")
-    .attr("xlink:href", model.played ? "reload-button.png" : "play-button.png")
+  if (model.enablePlayAndReload) {
+    model.controls.transition()
+      .duration(100 * timeScale)
+      .attr("visibility", model.stopped ? "visible" : "hidden")
+    model.controls.select(".button-image")
+      .attr("xlink:href", model.played ? "reload-button.png" : "play-button.png")
+  }
 
   model.force.on("tick", function(e) {
     forceNodeSel
@@ -172,8 +207,6 @@ function setAppClass(model, n) {
   model.svg.select("#" + n.id).selectAll("circle").attr("class", n.clazz)
 }
 
-// Animate circle which is the request along the link. If the supplied
-// endFn returns false, show a quick red flash around the source node.
 function sendRequest(model, payload, link, reverse, endFn) {
   // Light up link connection to show activity.
   if (link.source.clazz == "roachnode" || link.source.clazz == "switch") {
@@ -193,6 +226,12 @@ function sendRequest(model, payload, link, reverse, endFn) {
       .style("stroke", "#aaa")
   }
 
+  model.skin.sendRequest(model, payload, link, reverse, endFn)
+}
+
+// Animate circle which is the request along the link. If the supplied
+// endFn returns false, show a quick red flash around the source node.
+function animateRequest(model, payload, link, reverse, endFn) {
   var source = link.source,
       target = link.target
   if (reverse) {
@@ -213,11 +252,13 @@ function sendRequest(model, payload, link, reverse, endFn) {
     .attrTween("cy", function(d, i, a) {return function(t) { return source.y + (target.y - source.y) * t }})
     .each("end", function() {
       circle.remove()
-      model.rpcSendCount++
-      model.bytesXfer += payload.size * model.unitSize
-      model.svg.select("#rpc-count").text("RPCs: " + model.rpcSendCount)
-      model.svg.select("#bytes-xfer").text("MBs: " + Math.round(model.bytesXfer / (1<<20)))
-      model.svg.select("#elapsed").text("Elapsed: " + Number(model.elapsed() / 1000).toFixed(1) + "s")
+      if (model.displaySimState) {
+        model.rpcSendCount++
+        model.bytesXfer += payload.size * model.unitSize
+        model.svg.select("#rpc-count").text("RPCs: " + model.rpcSendCount)
+        model.svg.select("#bytes-xfer").text("MBs: " + Math.round(model.bytesXfer / (1<<20)))
+        model.svg.select("#elapsed").text("Elapsed: " + Number(model.elapsed() / 1000).toFixed(1) + "s")
+      }
       if (!endFn()) {
         model.svg.select("#" + target.id).append("circle")
           .attr("r", payload.radius())

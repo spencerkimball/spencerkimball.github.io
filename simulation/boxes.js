@@ -1,6 +1,8 @@
 function Boxes() {
 }
 
+Boxes.prototype.init = function(mode) {}
+
 Boxes.prototype.node = function(model, sel) {
   return sel.append("path")
     .attr("d", function(d) {
@@ -40,3 +42,6 @@ Boxes.prototype.packRanges = function(model, n, sel) {
     .style("stroke-width", function(d) { return d.flushed ? 0 : 1 })
 }
 
+Boxes.prototype.sendRequest = function(model, payload, link, reverse, endFn) {
+  animateRequest(model, payload, link, reverse, endFn)
+}

@@ -107,7 +107,10 @@ Datacenter.prototype.buildInterNodeLinks = function() {
   }
 }
 
+// Note that we've disabled visualization of apps. They now send
+// requests directly from the gateway node they're connected to.
 Datacenter.prototype.addApp = function(app) {
+  /*
   if (this.blackHole != null) {
     // Link to blackHole node.
     app.blackholeLink = {source: app, target: this.blackHole, clazz: "", distance: this.model.nodeDistance + this.model.appDistance(), latency: 0.25}
@@ -116,11 +119,11 @@ Datacenter.prototype.addApp = function(app) {
 
   // Add link from app to node.
   this.model.forceLinks.push(app.link)
+  */
 
-  // Add new app & update visualization.
   this.apps.push(app)
-  this.model.forceNodes.push(app)
-  this.model.layout()
+  //this.model.forceNodes.push(app)
+  //this.model.layout()
 }
 
 Datacenter.prototype.removeApp = function(app) {

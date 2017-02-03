@@ -1,6 +1,8 @@
 function Circles() {
 }
 
+Circles.prototype.init = function(mode) {}
+
 Circles.prototype.node = function(model, sel) {
   return sel.append("circle")
     .attr("r", function(d) { return d.radius })
@@ -29,5 +31,9 @@ Circles.prototype.packRanges = function(model, n, sel) {
     .attr("cy", function(d) { return d.y - n.radius / 2 + 2 })
     .attr("r", function(d) { return d.r })
     .style("stroke-width", function(d) { return d.flushed ? 0 : 1 })
+}
+
+Circles.prototype.sendRequest = function(model, payload, link, reverse, endFn) {
+  animateRequest(model, payload, link, reverse, endFn)
 }
 

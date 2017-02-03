@@ -6,7 +6,8 @@
 </head>
 
 <body>
-  <script src="d3.v3.min.js"></script>
+  <script src="https://d3js.org/d3.v3.min.js"></script>
+  <script src="https://d3js.org/topojson.v1.min.js"></script>
   <script src="model.js"></script>
   <script src="datacenter.js"></script>
   <script src="node.js"></script>
@@ -51,7 +52,7 @@ function initModel(model, exactRebalancing) {
       var replica = new Replica(0.5, range, dc.roachNodes[(i*3+j)%5], true, model)
     }
   }
-  addModel(model, false)
+  addModel(model)
 }
 
 new Model("model0", viewWidth/2, viewHeight, function(m) { initModel(m, true) })

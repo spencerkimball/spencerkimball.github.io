@@ -6,7 +6,8 @@
 </head>
 
 <body>
-  <script src="d3.v3.min.js"></script>
+  <script src="https://d3js.org/d3.v3.min.js"></script>
+  <script src="https://d3js.org/topojson.v1.min.js"></script>
   <script src="model.js"></script>
   <script src="datacenter.js"></script>
   <script src="node.js"></script>
@@ -53,7 +54,7 @@ function initModel(model, quiesceRaft) {
       replica.setTimeout(500 * Math.random())
     }
   }
-  addModel(model, false)
+  addModel(model)
 }
 
 new Model("model0", viewWidth/2, viewHeight, function(m) { initModel(m, false) })
