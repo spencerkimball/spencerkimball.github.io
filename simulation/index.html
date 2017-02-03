@@ -25,10 +25,10 @@ function initModel(model) {
   model.nodeRadius = 10
   model.nodeDistance = 30
   model.desiredReplicas = 5
-  //model.projection = d3.geo.albersUsa();
-  //model.projectionName = "us-states"
-  model.projection = d3.geo.mercator();
-  model.projectionName = "world"
+  model.projection = d3.geo.albersUsa();
+  model.projectionName = "us-states"
+  //model.projection = d3.geo.mercator();
+  //model.projectionName = "world"
   model.skin = new AggV1()
   model.enablePlayAndReload = false
   model.enableAddNodeAndApp = false
