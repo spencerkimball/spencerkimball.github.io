@@ -26,7 +26,7 @@ function initModel(model) {
   model.nodeRadius = 20
   model.nodeDistance = 80
   model.desiredReplicas = 5
-  model.geoProjection = "world"
+  model.geoProjection = "usa"
   model.skin = new AggV1()
   model.enablePlayAndReload = false
   model.enableAddNodeAndApp = true
@@ -45,7 +45,7 @@ function initModel(model) {
   }
   addModel(model)
 }
-new Model("model", viewWidth, viewHeight * 1.33, function(m) { initModel(m) })
+new Model("model", viewWidth, viewHeight * 1, function(m) { initModel(m) })
 
 </script>
 </body>

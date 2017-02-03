@@ -32,7 +32,7 @@ function addModel(model) {
   if (model.geoProjection == "world") {
     addWorldProjection(model)
   } else if (model.geoProjection == "usa") {
-    throw new error("unimplemented")
+    addUSAProjection(model)
   } else if (model.geoProjection == "eu") {
     throw new error("unimplemented")
   }
@@ -109,6 +109,21 @@ function addWorldProjection(model) {
   var svg = d3.select("svg");
 
   d3.json("https://spencerkimball.github.io/simulation/countries.json", function(error, collection) {
+    if (error) throw error;
+    svg.selectAll("path")
+      .data(collection.features)
+      .enter().append("path")
+      .attr("d", path);
+  });
+}
+
+function addUSAProjection(model) {
+  var projection = d3.geo.albersUsa();
+  var path = d3.geo.path()
+      .projection(projection);
+  var svg = d3.select("svg");
+
+  d3.json("https://spencerkimball.github.io/simulation/us-states.json", function(error, collection) {
     if (error) throw error;
     svg.selectAll("path")
       .data(collection.features)
