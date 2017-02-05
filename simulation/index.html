@@ -25,10 +25,7 @@ function initModel(model) {
   model.nodeRadius = 10
   model.nodeDistance = 30
   model.desiredReplicas = 5
-  model.projection = d3.geo.albersUsa();
-  model.projectionName = "us-states"
-  //model.projection = d3.geo.mercator();
-  //model.projectionName = "world"
+  model.projection = d3.geo.mercator()
   model.skin = new AggV1()
   model.enablePlayAndReload = false
   model.enableAddNodeAndApp = false
@@ -36,7 +33,7 @@ function initModel(model) {
 
   new Datacenter(-74.0059, 40.7128, model).label = "New York City"
   new Datacenter(-87.6298, 41.8781, model).label = "Chicago"
-  new Datacenter(-95.3698, 29.7604, model).label = "Houston"
+  new Datacenter(-96.7970, 32.7767, model).label = "Dallas"
   new Datacenter(-122.0839, 37.3861, model).label = "Mountain View"
   new Datacenter(-122.3321, 47.6062, model).label = "Seattle"
   for (var i = 0; i < model.datacenters.length; i++) {

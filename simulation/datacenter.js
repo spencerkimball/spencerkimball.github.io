@@ -4,8 +4,9 @@ function Datacenter(longitude, latitude, model) {
   this.apps = []
   this.roachNodes = []
   this.model = model
-  this.location = model.projection([longitude, latitude])
-  this.dcNode = {id: "datacenter" + this.index, x: this.location[0], y: this.location[1], fixed: true, radius: 3, clazz: "datacenter", dc: this, links: {}}
+  this.location = [longitude, latitude]
+  var loc = model.projection(this.location)
+  this.dcNode = {id: "datacenter" + this.index, x: loc[0], y: loc[1], fixed: true, radius: 3, clazz: "datacenter", dc: this, links: {}}
   this.model.forceNodes.push(this.dcNode)
   if (!this.model.useSwitches) {
     this.dcNode.radius = 0
@@ -14,8 +15,8 @@ function Datacenter(longitude, latitude, model) {
   // Link this datacenter to all others.
   for (var i = 0; i < this.model.datacenters.length; i++) {
     var dc = this.model.datacenters[i]
-    latency = 4000 * Math.sqrt((this.location[0] - dc.location[0]) * (this.location[0] - dc.location[0]) +
-                               (this.location[1] - dc.location[1]) * (this.location[1] - dc.location[1])) / viewWidth
+    var dcLoc = model.projection(dc.location)
+    latency = 4000 * Math.sqrt((loc[0] - dcLoc[0]) * (loc[0] - dcLoc[0]) + (loc[1] - dcLoc[1]) * (loc[1] - dcLoc[1])) / viewWidth
     var l = {id: "link" + this.model.linkCount++, source: this.dcNode, target: dc.dcNode, clazz: "dclink", latency: latency}
     this.dcNode.links[dc.dcNode.id] = l
     var rl = {id: "link" + this.model.linkCount++, source: dc.dcNode, target: this.dcNode, clazz: "dclink", latency: latency}
