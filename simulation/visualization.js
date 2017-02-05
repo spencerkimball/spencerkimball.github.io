@@ -153,19 +153,16 @@ function redrawProjection(model, redrawParams) {
     model.usStatesG.selectAll("path")
       .attr("visibility", "hidden");
   }
+
+  model.layout()
 }
 
 function layoutProjection(model) {
   var pathGen = d3.geo.path()
       .projection(model.projection);
 
-  model.projection
-    .rotate([0, 0])
-    .scale(1)
-
   // Compute the scale intent (min to max zoom).
-  var b = projectBounds(model.projection, mercatorBounds),
-      minScale = model.width / (b[1][0] - b[0][0]),
+  var minScale = model.width / 2 / Math.PI,
       scaleExtent = [minScale, 20 * minScale]
 
   var dcXYMin = [180, -maxlat],
@@ -190,11 +187,10 @@ function layoutProjection(model) {
   // Compute scale based on the longitudinal span of datacenters, with
   // a constant factor to provide an inset.
   var yaw = -(dcXYMin[0] + dcXYMax[0]) / 2,
-      bDC = [model.projection(dcXYMin), model.projection(dcXYMax)],
-      scale = model.width / (bDC[1][0] - bDC[0][0]) / 1.75;
+      scale = model.width / ((dcXYMax[0] - dcXYMin[0]) * Math.PI / 180) / 1.75;
   model.projection
     .rotate([yaw, 0])
-    .scale(scale)
+    .scale(scale);
 
   var redrawParams = {
     tlast: [0, 0],
@@ -211,15 +207,15 @@ function layoutProjection(model) {
   tp[1] += dy
   model.projection.translate(tp)
 
-  var zoom = d3.behavior.zoom()
-      .translate([0, 0])
-      .scale(model.projection.scale())
-      .scaleExtent(scaleExtent)
-      .on("zoom", function() { redrawProjection(model, redrawParams) });
+  model.zoom = d3.behavior.zoom()
+    .translate([0, dy])
+    .scale(model.projection.scale())
+    .scaleExtent(scaleExtent)
+    .on("zoom", function() { redrawProjection(model, redrawParams) });
 
   model.svgParent
     .attr("class", "projection")
-    .call(zoom)
+    .call(model.zoom)
 
   model.projectionG = model.svgParent.append("g")
 
@@ -229,6 +225,7 @@ function layoutProjection(model) {
     model.worldG.selectAll("path")
       .data(collection.features)
       .enter().append("path")
+      .attr("class", "geopath");
     redrawProjection(model, redrawParams)
   });
 
@@ -238,6 +235,7 @@ function layoutProjection(model) {
     model.usStatesG.selectAll("path")
       .data(collection.features)
       .enter().append("path")
+      .attr("class", "geopath");
     redrawProjection(model, redrawParams)
   });
 }
@@ -249,40 +247,41 @@ function removeModel(model) {
 function layoutModel(model) {
   if (model.svg == null) return
 
-  var forceNodeSel = model.svg.selectAll(".forcenode"),
-      forceLinkSel = model.svg.selectAll(".forcelink"),
-      linkSel = model.svg.selectAll(".link")
-
-  if (model.force == null) {
-    model.force = d3.layout.force()
-      .nodes(model.forceNodes)
-      .links(model.forceLinks)
-      .gravity(0)
-      .charge(0)
-      .linkDistance(function(d) { return d.distance })
-      .size([model.width, model.height])
-  }
-
-  forceNodeSel = forceNodeSel.data(model.force.nodes(), function(d) { return d.id })
-  model.skin.node(model, forceNodeSel.enter().append("g")
-                  .attr("id", function(d) { return d.id })
-                  .attr("class", "forcenode")
-                  .attr("transform", function(d) { return "translate(-" + d.radius + ",-" + d.radius + ")" }))
-  forceNodeSel.exit().remove()
-
-  forceLinkSel = forceLinkSel.data(model.force.links(), function(d) { return d.source.id + "-" + d.target.id })
-  forceLinkSel.enter().insert("line", ".node")
+  var dcLinkSel = model.svg.selectAll(".dclink")
+  dcLinkSel = dcLinkSel.data(model.dcLinks, function(d) { return d.source.id + "-" + d.target.id })
+  dcLinkSel.enter().append("line")
     .attr("id", function(d) { return d.source.id + "-" + d.target.id })
-    .attr("class", function(d) { return "forcelink " + d.clazz })
-  forceLinkSel.exit().remove()
-  forceLinkSel.moveToBack()
+    .attr("class", function(d) { return d.clazz })
+  dcLinkSel.exit().remove()
 
-  linkSel = linkSel.data(model.links, function(d) { return d.source.id + "-" + d.target.id })
-  linkSel.enter().insert("line", ".node")
+  var dcSel = model.svg.selectAll(".dc")
+      .data(model.datacenters, function(d) { return d.id })
+  model.skin.dc(model, dcSel.enter().append("g")
+                .attr("id", function(d) { return d.id })
+                .attr("class", "dc")
+                .on("click", function() {
+                  console.log(model.zoom.scale())
+                  console.log(model.zoom.scaleExtent()[1])
+                  model.svgParent.transition()
+                    .duration(1000)
+                    .call(model.zoom.translate(model.zoom.translate()).event)
+                }))
+  dcSel.exit().remove()
+
+  var linkSel = dcSel.selectAll(".dc-contents").selectAll(".link") // select both switch and node links
+      .data(function(d) { return d.nodeLinks }, function(d) { return d.source.id + "-" + d.target.id })
+  linkSel.enter().append("line")
     .attr("id", function(d) { return d.source.id + "-" + d.target.id })
-    .attr("class", function(d) { return "link " + d.clazz })
+    .attr("vector-effect", "non-scaling-stroke")
+    .attr("class", function(d) { return d.clazz })
   linkSel.exit().remove()
-  linkSel.moveToBack()
+
+  var nodeSel = dcSel.selectAll(".dc-contents").selectAll(".node")
+      .data(function(d) { return d.roachNodes }, function(d) { return d.id })
+  model.skin.node(model, nodeSel.enter().append("g")
+                  .attr("id", function(d) { return d.id })
+                  .attr("class", "node"))
+  nodeSel.exit().remove()
 
   if (model.enablePlayAndReload) {
     model.controls.transition()
@@ -292,21 +291,24 @@ function layoutModel(model) {
       .attr("xlink:href", model.played ? "reload-button.png" : "play-button.png")
   }
 
-  model.force.on("tick", function(e) {
-    forceNodeSel
-      .each(gravity(0.2 * e.alpha))
-      .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")" })
-    forceLinkSel.attr("x1", function(d) { return d.source.x })
+  model.layout = function() {
+    dcSel
+      .attr("transform", function(d) {
+        var loc = model.projection(d.location)
+        d.x = loc[0]
+        d.y = loc[1]
+        return "translate(" + loc + ")"
+      })
+    dcLinkSel.attr("x1", function(d) { return d.source.x })
       .attr("y1", function(d) { return d.source.y })
       .attr("x2", function(d) { return d.target.x })
       .attr("y2", function(d) { return d.target.y })
     linkSel.attr("x1", function(d) { return d.source.x })
       .attr("y1", function(d) { return d.source.y })
-      .attr("x2", function(d) { return d.target.x })
-      .attr("y2", function(d) { return d.target.y })
-  })
-
-  model.force.start()
+      .attr("x2", function(d) { return 0 })
+      .attr("y2", function(d) { return 0 })
+  }
+  model.layout()
 }
 
 function setNodeHealthy(model, n) {
@@ -314,13 +316,6 @@ function setNodeHealthy(model, n) {
 
 function setNodeUnreachable(model, n, endFn) {
   model.svg.select("#" + n.id).selectAll(".roachnode")
-}
-
-function gravity(alpha, dc) {
-  return function(d) {
-    d.x += (d.dc.location[0] - d.x) * alpha
-    d.y += (d.dc.location[1] - d.y) * alpha
-  }
 }
 
 function packRanges(model, n) {
@@ -334,21 +329,16 @@ function setAppClass(model, n) {
 
 function sendRequest(model, payload, link, reverse, endFn) {
   // Light up link connection to show activity.
-  if (link.source.clazz == "roachnode" || link.source.clazz == "datacenter") {
+  if (link.source.clazz == "roachnode" || link.source.clazz == "dc") {
     var stroke = "#aaa"
-    if (payload instanceof HeartbeatPayload) {
-      stroke = payload.color()
-    }
     var width = Math.min(3, payload.radius())
     model.svg.select("#" + link.source.id + "-" + link.target.id)
       .transition()
       .duration(0.8 * link.latency * timeScale)
       .style("stroke-width", width)
-      .style("stroke", stroke)
       .transition()
       .duration(0.2 * link.latency * timeScale)
       .style("stroke-width", 0)
-      .style("stroke", "#aaa")
   }
 
   model.skin.sendRequest(model, payload, link, reverse, endFn)

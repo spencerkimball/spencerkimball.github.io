@@ -1,23 +1,29 @@
 function Boxes() {
 }
 
+function drawBox(w, h, cornerPct) {
+  var c = w * cornerPct
+  return "M" + c + ",0 L" + (w-c) + ",0 A" + c + "," + c + " 0 0 1 " + w + "," + c +
+    " L" + w + "," + (h-c) + " A" + c + "," + c + " 0 0 1 " + (w-c) + "," + h +
+    " L" + c + "," + h + " A" + c + "," + c + " 0 0 1 0," + (h-c) +
+    " L0," + c + " A" + c + "," + c + " 0 0 1 " + c + ",0 Z"
+}
+
 Boxes.prototype.init = function(mode) {}
+
+Boxes.prototype.dc = function(model, sel) {
+  return sel.append("path")
+    .attr("d", function(d) { return drawBox(d.radius * 2, d.radius * 2.25, 0.1) })
+    .attr("class", function(d) { return d.clazz })
+    .attr("visibility", "hidden")
+}
 
 Boxes.prototype.node = function(model, sel) {
   return sel.append("path")
-    .attr("d", function(d) {
-      var w = d.radius * 2
-      var h = w * 1.125
-      var c = w * 0.1
-      return "M" + c + ",0 L" + (w-c) + ",0 A" + c + "," + c + " 0 0 1 " + w + "," + c +
-        " L" + w + "," + (h-c) + " A" + c + "," + c + " 0 0 1 " + (w-c) + "," + h +
-        " L" + c + "," + h + " A" + c + "," + c + " 0 0 1 0," + (h-c) +
-        " L0," + c + " A" + c + "," + c + " 0 0 1 " + c + ",0 Z"
-    })
+    .attr("d", function(d) { return drawBox(d.radius * 2, d.radius * 2.25, 0.1) })
     .attr("transform", function(d) { return "translate(-" + d.radius + ",-" + d.radius + ")" })
   //.on("click", function(d) { d.clicked() })
     .attr("class", function(d) { return d.clazz })
-    .call(model.force.drag)
 }
 
 Boxes.prototype.packRanges = function(model, n, sel) {

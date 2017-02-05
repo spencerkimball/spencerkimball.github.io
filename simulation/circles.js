@@ -3,12 +3,18 @@ function Circles() {
 
 Circles.prototype.init = function(mode) {}
 
+Circles.prototype.dc = function(model, sel) {
+  return sel.append("path")
+    .attr("d", function(d) { return drawBox(d.radius * 2, d.radius * 2.25, 0.1) })
+    .attr("class", function(d) { return d.clazz })
+    .attr("visibility", "hidden")
+}
+
 Circles.prototype.node = function(model, sel) {
   return sel.append("circle")
     .attr("r", function(d) { return d.radius })
   //.on("click", function(d) { d.clicked() })
     .attr("class", function(d) { return d.clazz })
-    .call(model.force.drag)
 }
 
 Circles.prototype.packRanges = function(model, n, sel) {

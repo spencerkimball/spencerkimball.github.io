@@ -23,11 +23,55 @@ AggV1.prototype.init = function(model) {
   }
 }
 
+AggV1.prototype.dc = function(model, sel) {
+  var g = sel.append("g")
+      .attr("class", "dc-contents")
+      .attr("transform", function(d) { return "scale(" + d.radius + ")" })
+  g.append("path")
+    .attr("d", function(d) { return drawBox(2, 2, 0.1) })
+    .attr("vector-effect", "non-scaling-stroke")
+    .attr("class", function(d) { return d.clazz })
+    .attr("transform", function(d) { return "translate(-1, -1)" })
+  sel.append("text")
+    .attr("class", "dclabel")
+    .attr("dx", function(d) { return -d.radius })
+    .attr("dy", function(d) { return 1.5 * d.radius })
+    .text(function(d) { return d.label })
+}
+
+// Distance that nodes are draw from center of datacenter.
+var nodeDistance = 0.7
+
+function computeNodeRadius(numNodes) {
+  // Compute internode distance, which is length of chord separating nodes.
+  var interNodeDistance = Math.abs(2 * nodeDistance * Math.sin(Math.PI / numNodes));
+  var radius = interNodeDistance / 3
+  if (radius > 0.20) {
+    return 0.20;
+  }
+  return radius;
+}
+
+function computeNodeAngle(i, numNodes) {
+  return 2 * Math.PI * (i + 1) / numNodes - Math.PI / 2
+}
+
 AggV1.prototype.node = function(model, sel) {
   return sel.append("circle")
-    .attr("r", function(d) { return d.radius })
+    .attr("vector-effect", "non-scaling-stroke")
+    .attr("r", function(d) {
+      return computeNodeRadius(d.dc.roachNodes.length)
+    })
     .attr("class", function(d) { return d.clazz })
-    .call(model.force.drag)
+    .attr("cx", function(d, i) {
+      d.x = nodeDistance * Math.cos(computeNodeAngle(i, d.dc.roachNodes.length))
+      return d.x
+    })
+    .attr("cy", function(d, i) {
+      d.y = nodeDistance * Math.sin(computeNodeAngle(i, d.dc.roachNodes.length))
+      return d.y
+    })
+    //.attr("visibility", "hidden")
 }
 
 AggV1.prototype.packRanges = function(model, n, sel) {

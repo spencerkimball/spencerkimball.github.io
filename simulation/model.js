@@ -9,6 +9,7 @@ function Model(id, width, height, initFn) {
   this.width = width
   this.height = height
   this.initFn = initFn
+  this.dcRadius = 30
   this.nodeRadius = 35
   this.appRadius = 0
   this.nodeDistance = 150
@@ -42,10 +43,7 @@ function Model(id, width, height, initFn) {
   this.skin = new Circles()
   this.enablePlayAndReload = true
   this.enableAddNodeAndApp = false
-  this.force = null
-  this.forceNodes = []
-  this.forceLinks = []
-  this.links = []
+  this.dcLinks = []
   models.push(this)
 
   if (initFn != null) {
@@ -109,9 +107,7 @@ Model.prototype.restart = function() {
   // Clean up each datacenter.
   for (var j = 0; j < this.datacenters.length; j++) {
     var dc = this.datacenters[j]
-    if (dc.dcNode != null) {
-      dc.dcNode.links = {}
-    }
+    dc.links = {}
     dc.apps = []
     dc.roachNodes = []
   }
@@ -119,14 +115,8 @@ Model.prototype.restart = function() {
   this.datacenters = []
 
   this.clearRequests()
-  while (this.forceNodes.length > 0) {
-    this.forceNodes.pop()
-  }
-  while (this.forceLinks.length > 0) {
-    this.forceLinks.pop()
-  }
-  while (this.links.length > 0) {
-    this.links.pop()
+  while (this.dcLinks.length > 0) {
+    this.dcLinks.pop()
   }
 
   // Re-initialize from scratch.
@@ -198,26 +188,10 @@ Model.prototype.setNodeUnreachable = function(node, endFn) {
   setNodeUnreachable(this, node, endFn)
 }
 
-function randomOffset(x, y, radius) {
-  x = x + Math.floor(Math.random() * radius)
-  y = y + Math.floor(Math.random() * radius)
-  return [x, y]
-}
-
 function addNodeToModel(model, dc) {
-  // Offset new node randomly.
-  var x = dc.cx,
-      y = dc.cy
-  if (dc.roachNodes.length > 0) {
-    var last = dc.roachNodes[dc.roachNodes.length-1]
-    offset = randomOffset(last.x, last.y, model.nodeRadius)
-    x = offset[0]
-    y = offset[1]
-  }
-
   // Create the new node, identified by node ID.
   var nodeID = dc.roachNodes.length
-  rn = new RoachNode(dc.id + "node" + nodeID, x, y, model, dc)
+  rn = new RoachNode(dc.id + "node" + nodeID, 0, 0, model, dc)
 
   return rn
 }
@@ -235,13 +209,10 @@ function addAppToModel(model, dc) {
     return
   }
   var rn = avail[Math.floor(Math.random() * avail.length)]
-  var offset = randomOffset(rn.x, rn.y, model.nodeRadius)
-  var x = offset[0]
-  var y = offset[1]
 
   // Create the new application, identified by app ID.
   var l = {source: null, target: rn, clazz: "applink", distance: model.appDistance(), latency: model.dcLatency}
-  var app = new App(dc.id + "app" + dc.apps.length, x, y, l, rn, model, dc)
+  var app = new App(dc.id + "app" + dc.apps.length, 0, 0, l, rn, model, dc)
   return app
 }
 
