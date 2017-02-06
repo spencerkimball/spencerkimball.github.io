@@ -5,38 +5,37 @@ AggV1.prototype.init = function(model) {
   // Create 101 linear gradients to represent 0-100% fullness,
   // inclusive.
   for (var pctUsage = 0; pctUsage <= 100; pctUsage++) {
-    var color = "008000"
+    var color = "008000";
     if (pctUsage > 95) {
-      color = "ff4500"
+      color = "ff4500";
     } else if (pctUsage > 90) {
-      color = "ff8c00"
+      color = "ff8c00";
     } else if (pctUsage > 85) {
-      color = "#ffd700"
+      color = "#ffd700";
     }
     var grad = model.defs
         .append("linearGradient")
         .attr("id", "fullnessGradient-" + pctUsage)
         .attr("x1", "0%").attr("x2", "0%")
-        .attr("y1", "100%").attr("y2", "0%")
-    grad.append("stop").attr("offset", (pctUsage + "%")).style("stop-color", color)
-    grad.append("stop").attr("offset", (pctUsage + "%")).style("stop-color", "white")
+        .attr("y1", "100%").attr("y2", "0%");
+    grad.append("stop").attr("offset", (pctUsage + "%")).style("stop-color", color);
+    grad.append("stop").attr("offset", (pctUsage + "%")).style("stop-color", "white");
   }
 }
 
 AggV1.prototype.dc = function(model, sel) {
   var g = sel.append("g")
-      .attr("class", "dc-contents")
-      .attr("transform", function(d) { return "scale(" + d.radius + ")" })
+      .attr("class", "dc-contents");
   g.append("path")
     .attr("d", function(d) { return drawBox(2, 2, 0.1) })
     .attr("vector-effect", "non-scaling-stroke")
     .attr("class", function(d) { return d.clazz })
-    .attr("transform", function(d) { return "translate(-1, -1)" })
+    .attr("transform", function(d) { return "translate(-1, -1)" });
   sel.append("text")
     .attr("class", "dclabel")
-    .attr("dx", function(d) { return -d.radius })
-    .attr("dy", function(d) { return 1.5 * d.radius })
-    .text(function(d) { return d.label })
+    //.attr("dx", function(d) { return -d.radius })
+    .attr("dy", function(d) { return "1em" })
+    .text(function(d) { return d.label });
 }
 
 // Distance that nodes are draw from center of datacenter.
