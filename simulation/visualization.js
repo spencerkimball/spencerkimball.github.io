@@ -100,6 +100,7 @@ function addModel(model) {
 }
 
 var usStatesBounds = [[-124.626080, 48.987386], [-62.361014, 18.005611]],
+    maxLatitude = 83, // clip northern and southern poles
     maxScaleFactor = 20;
 
 function zoomToDatacenter(model, dc) {
@@ -117,8 +118,7 @@ function zoomToDatacenter(model, dc) {
 }
 
 function layoutProjection(model) {
-  var pathGen = d3.geo.path()
-      .projection(model.projection);
+  var pathGen = d3.geo.path().projection(model.projection);
 
   // Compute the scale intent (min to max zoom).
   var minScale = model.width / 2 / Math.PI,
@@ -127,10 +127,18 @@ function layoutProjection(model) {
   model.zoom = d3.behavior.zoom()
     .scaleExtent(scaleExtent)
     .on("zoom", function() {
+      // Instead of translating the projection, rotate it (compute yaw as longitudinal rotation).
       var t = model.zoom.translate(),
           s = model.zoom.scale(),
           yaw = 360 * (t[0] - model.width / 2) / model.width * (minScale / s);
-      // Instead of translating the projection, rotate it.
+      // Compute limits for vertical translation based on max latitude.
+      model.projection.scale(s).translate([0, 0]);
+      var p = model.projection([0, maxLatitude]);
+      if (t[1] > -p[1]) {
+        t[1] = -p[1]
+      } else if (t[1] - p[1] < model.height) {
+        t[1] = model.height + p[1]
+      }
       t[0] = model.width / 2
       model.projection
         .rotate([yaw, 0])

@@ -37,10 +37,12 @@ function initModel(model) {
   new Datacenter(-122.0839, 37.3861, model).label = "Mountain View"
   new Datacenter(-122.3321, 47.6062, model).label = "Seattle"
   for (var i = 0; i < model.datacenters.length; i++) {
-    for (var j = 0; j < 5; j++) {
+    for (var j = 0; j < 10; j++) {
       addNodeToModel(model, model.datacenters[i])
     }
-    addAppToModel(model, model.datacenters[i])
+    for (var j = 0; j < 2; j++) {
+      addAppToModel(model, model.datacenters[i])
+    }
   }
   addModel(model)
 }
