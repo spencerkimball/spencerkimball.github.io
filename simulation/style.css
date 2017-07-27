@@ -53,13 +53,6 @@
 .roachnode {
     stroke: #333;
     stroke-width: 1px;
-    fill: url("#fullnessGradient-0");
-}
-
-.app {
-    fill: #fff;
-    stroke: #400;
-    stroke-width: 1px;
 }
 
 .backoff {
@@ -67,17 +60,23 @@
     stroke-dasharray: 3,3;
 }
 
-.dc {
+.locality {
     stroke: #66a;
     stroke-width: 1.5px;
     fill: #fff;
     fill-opacity: 0.6;
 }
 
-.dclabel {
+.locality-label {
     fill: black;
     stroke-width: 0px;
     font: 10px helvetica;
+    font-weight: bold;
+}
+
+.current-locality {
+    fill: black;
+    font: 24px helvetica;
     font-weight: bold;
 }
 
@@ -94,13 +93,13 @@
 .request {
 }
 
-.dclink {
-    stroke: #c33;
+.link {
+    stroke: #ccc;
     stroke-width: 0px;
 }
 
-.link {
-    stroke: #c33;
+.route {
+    stroke: #ccc;
     stroke-width: 0px;
 }
 

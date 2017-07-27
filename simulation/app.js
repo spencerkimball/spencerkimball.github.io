@@ -1,74 +1,67 @@
-function App(id, x, y, link /* graph link to node */, roachNode, model, dc) {
-  this.id = id
-  this.x = x
-  this.y = y
-  this.radius = model.appRadius
-  this.clazz = "app"
-  link.source = this
-  this.link = link
-  this.links = {}
-  this.links[roachNode.id] = link
-  this.roachNode = roachNode
-  this.roachNode.app = this
-  this.retries = 0
-  this.stopped = true
-  this.model = model
-  this.dc = dc
-  this.dc.addApp(this)
+function App(zone, tables, model) {
+  this.index = model.apps.length;
+  this.id = "app" + this.index;
+  this.zone = zone;
+  this.tables = tables;
+  this.retries = 0;
+  this.stopped = true;
+  // Select a roachNode from within nodes matching the specified zone.
+  var nodes = model.findMatchingNodes(zone);
+  if (nodes.length == 0) {
+    console.log("ERROR: not enough nodes matching zone=" + zone + " to accommodate app");
+  }
+  this.roachNode = nodes[Math.floor(Math.random() * nodes.length)];
+  this.model = model;
+  this.model.addApp(this);
 }
 
 App.prototype.run = function() {
-  if (this.stopped) return
-  this.write()
-  this.resetTimeout()
+  if (this.stopped) return;
+  this.write();
+  this.resetTimeout();
 }
 
 App.prototype.start = function() {
-  this.stopped = false
-  this.resetTimeout()
+  this.stopped = false;
+  this.resetTimeout();
 }
 
 App.prototype.stop = function() {
-  clearTimeout(this.timeout)
-  this.stopped = true
+  clearTimeout(this.timeout);
+  this.stopped = true;
 }
 
 App.prototype.resetTimeout = function() {
-  clearTimeout(this.timeout)
-  var that = this
-  var timeout = Math.max(this.model.minAppXfer * timeScale, Math.random() * this.model.appXfer * timeScale)
-  timeout = Math.min(this.model.maxAppXfer * timeScale, Math.pow(2, this.retries) * timeout)
-  this.timeout = setTimeout(function() { that.run() }, timeout)
+  clearTimeout(this.timeout);
+  var that = this;
+  var timeout = Math.max(this.model.minAppXfer * timeScale, Math.random() * this.model.appXfer * timeScale);
+  timeout = Math.min(this.model.maxAppXfer * timeScale, Math.pow(2, this.retries) * timeout);
+  this.timeout = setTimeout(function() { that.run(); }, timeout);
 }
 
 App.prototype.backoff = function() {
-  this.retries++
-  this.resetTimeout()
-  if (this.retries == 1) {
-    this.clazz = "app backoff"
-    this.model.setAppClass(this)
-  }
+  this.retries++;
+  this.resetTimeout();
 }
 
 App.prototype.success = function() {
   if (this.retries == 0) {
-    return
+    return;
   }
-  this.clazz = "app"
-  this.retries = 0
-  this.resetTimeout()
-  this.model.setAppClass(this)
+  this.retries = 0;
+  this.resetTimeout();
 }
 
 // Send a randomly sized request from app to a randomly chosen range.
 App.prototype.write = function() {
-  if (this.model.ranges.length == 0) {
-    return
+  if (this.tables.length == 0) {
+    return;
   }
-  var idx = Math.floor(Math.random() * this.model.ranges.length)
-  if (this.model.ranges[idx].leader != null) {
-    var size = Math.random() * this.model.reqSize
-    req = new Request(new DataPayload(size), this.model.ranges[idx].leader, this, this.model)
-    req.route(this.roachNode, null)
+  var table = this.tables[Math.floor(Math.random() * this.tables.length)];
+  var range = table.ranges[Math.floor(Math.random() * table.ranges.length)];
+  if (range.leader != null) {
+    var size = Math.random() * this.model.reqSize;
+    req = new Request(new DataPayload(size), range.leader, this, this.model);
+    req.route(this.roachNode, null);
   }
 }

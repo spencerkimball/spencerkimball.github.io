@@ -1,21 +1,25 @@
-function RoachNode(id, x, y, model, dc) {
-  this.id = id
-  this.index = dc.roachNodes.length
-  this.x = x
-  this.y = y
-  this.radius = model.nodeRadius
-  this.clazz = "roachnode"
-  this.state = "healthy"
-  this.replicas = []
-  this.children = this.replicas
-  this.links = {}
-  this.busy = false
-  this.app = null
+function RoachNode(name, location, locality, model) {
+  this.name = name;
+  // Add node name as last, most-specific locality entry.
+  locality.push("node=" + name);
+  this.location = location;
+  this.locality = locality;
+  this.index = model.roachNodes.length;
+  this.id = "node" + this.index;
+  this.x = 0;
+  this.y = 0;
+  this.radius = model.nodeRadius;
+  this.clazz = "roachnode";
+  this.state = "healthy";
+  this.replicas = [];
+  this.children = this.replicas;
+  this.routes = {};
+  this.busy = false;
   // Set the replicas as the "children" array of the node in order to set
   // them up to be a packed layout.
-  this.model = model
-  this.dc = dc
-  this.dc.addNode(this)
+  this.model = model;
+
+  this.model.addNode(this);
 }
 
 RoachNode.prototype.clicked = function() {
@@ -37,7 +41,7 @@ RoachNode.prototype.clicked = function() {
         }
       }
       this.replicas = []
-      this.dc.removeNode(this)
+      this.model.removeNode(this)
     })
   }
   console.log(this.id + " moved to state " + this.state)
