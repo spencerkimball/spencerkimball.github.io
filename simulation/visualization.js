@@ -125,8 +125,8 @@ function findScale(b1, b2, factor) {
 
 function zoomToLocality(model, duration, locality) {
   model.setLocality(locality);
-  var bounds = model.bounds();
 
+  // Add label.
   var localityLabel = model.svgParent.select(".current-locality");
   localityLabel
     .transition()
@@ -140,19 +140,30 @@ function zoomToLocality(model, duration, locality) {
         .style("opacity", 1);
     });
 
-  var scalex = findScale(bounds[0][0], bounds[1][0], model.width / (Math.PI / 180)),
+  var bounds = model.bounds(),
+      scalex = findScale(bounds[0][0], bounds[1][0], model.width / (Math.PI / 180)),
       scaley = findScale(bounds[0][1], bounds[1][1], model.height / (Math.PI / 90)),
-      scale = Math.min(scalex, scaley);
+      scale = Math.min(scalex, scaley),
+      needAdjust = false;
 
   if (scale == 0) {
-    scale = model.scaleExtent[1];
+    needAdjust = true;
+    scale = model.maxScale * Math.pow(5, locality.length);
   }
 
   // Compute the initial translation to center the deployed datacenters.
-  //model.projection.scale(scale).translate([0, 0]);
   model.projection.rotate([0, 0]).scale(scale).translate([0, 0]);
   var center = [(bounds[0][0] + bounds[1][0]) / 2, (bounds[0][1] + bounds[1][1]) / 2];
   var p = model.projection(center);
+
+  // If necessary (all localities had the same location), adjust the
+  // location of each localities so there's some differentiation for
+  // display purposes.
+  if (needAdjust) {
+    for (var i = 0; i < model.localities.length; i++) {
+      model.localities[i].adjustLocation(i, model.localities.length, 0.2 * model.width)
+    }
+  }
 
   model.svgParent
     .transition()
@@ -169,9 +180,9 @@ function layoutProjection(model) {
   // Compute the scale intent (min to max zoom).
   var minScale = model.width / 2 / Math.PI,
       maxScale = maxScaleFactor * minScale,
-      scaleExtent = [minScale, maxScale];
+      scaleExtent = [minScale, maxScale * 1024];
 
-  model.scaleExtent = scaleExtent;
+  model.maxScale = maxScale;
   model.zoom = d3.behavior.zoom()
     .scaleExtent(scaleExtent)
     .on("zoom", function() {
@@ -250,6 +261,7 @@ function layoutProjection(model) {
     model.projectionG.call(model.zoom.event);
   });
 
+  model.projection.scale(model.maxScale);
   zoomToLocality(model, 0, []);
 }
 

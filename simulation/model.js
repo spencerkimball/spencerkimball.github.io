@@ -272,7 +272,7 @@ Model.prototype.sendRequest = function(payload, link, reverse, endFn) {
 Model.prototype.resetLocalities = function() {
   // Determine localities to display based on current locality.
   var localityMap = {};
-  this.localities.length = [];
+  this.localities = [];
   this.links.length = [];
   for (var i = 0; i < this.roachNodes.length; i++) {
     var node = this.roachNodes[i];
@@ -291,6 +291,7 @@ Model.prototype.resetLocalities = function() {
   for (loc in localityMap) {
     new Locality(localityMap[loc].locality, localityMap[loc].nodes, this);
   }
+
   this.layout();
 }
 

@@ -21,6 +21,22 @@ Locality.prototype.findCentroid = function() {
   return [centroid[0] / this.nodes.length, centroid[1] / this.nodes.length];
 }
 
+function computeAngle(i, count) {
+  return 2 * Math.PI * (i + 1) / count - Math.PI / 2;
+}
+
+// adjustLocation adjusts the locality location so that it lies on a
+// circle of size radius at an angle defined by computeAngle(i, count).
+Locality.prototype.adjustLocation = function(i, count, radius) {
+  var angle = computeAngle(i, count),
+      xy = this.model.projection(this.location),
+      xyAdjusted = [xy[0] + radius * Math.cos(angle), xy[1] + radius * Math.sin(angle)];
+  this.location = this.model.projection.invert(xyAdjusted);
+  for (var i = 0; i < this.nodes.length; i++) {
+    this.nodes[i].location = this.location;
+  }
+}
+
 Locality.prototype.leaderCount = function() {
   var count = 0
   for (var i = 0; i < this.nodes.length; i++) {
