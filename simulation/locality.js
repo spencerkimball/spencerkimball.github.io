@@ -45,6 +45,22 @@ Locality.prototype.leaderCount = function() {
   return count
 }
 
+Locality.prototype.usage = function() {
+  var usage = 0
+  for (var i = 0; i < this.nodes.length; i++) {
+    usage += this.nodes[i].usage()
+  }
+  return usage
+}
+
+Locality.prototype.capacity = function() {
+  var capacity = 0
+  for (var i = 0; i < this.nodes.length; i++) {
+    capacity += this.nodes[i].capacity
+  }
+  return capacity
+}
+
 // localityName extracts the locality name as the first element of the
 // locality array and strips out any leading ".*=" pattern.
 function localityName(locality) {

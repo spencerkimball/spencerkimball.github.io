@@ -9,9 +9,8 @@ function Model(id, width, height, initFn) {
   this.width = width;
   this.height = height;
   this.initFn = initFn;
-  this.nodeRadius = 35;
+  this.nodeRadius = 40;
   this.appRadius = 0;
-  this.nodeDistance = 150;
   this.interNodeDistance = 25;
   this.nodeCapacity = 5000.0;
   this.reqSize = 0.1;

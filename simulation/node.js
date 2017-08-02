@@ -4,6 +4,7 @@ function RoachNode(name, location, locality, model) {
   locality.push("node=" + name);
   this.location = location;
   this.locality = locality;
+  this.capacity = model.nodeCapacity;
   this.index = model.roachNodes.length;
   this.id = "node" + this.index;
   this.x = 0;
@@ -24,49 +25,49 @@ function RoachNode(name, location, locality, model) {
 
 RoachNode.prototype.clicked = function() {
   if (this.state == "unreachable") {
-    this.state = "healthy"
-    this.model.setNodeHealthy(this)
+    this.state = "healthy";
+    this.model.setNodeHealthy(this);
   } else if (this.state == "healthy") {
-    this.state = "unreachable"
-    var that = this
+    this.state = "unreachable";
+    var that = this;
     this.model.setNodeUnreachable(this, function() {
-      this.state = "dead"
+      this.state = "dead";
       for (var i = 0; i < this.replicas.length; i++) {
-        var r = this.replicas[i]
-        r.stop()
-        var index = r.range.replicas.indexOf(r)
+        var r = this.replicas[i];
+        r.stop();
+        var index = r.range.replicas.indexOf(r);
         if (index != -1) {
-          r.range.replicas.splice(index, 1)
-          console.log("with " + this.id + " dead, removing " + r.id + " from " + r.range.id)
+          r.range.replicas.splice(index, 1);
+          console.log("with " + this.id + " dead, removing " + r.id + " from " + r.range.id);
         }
       }
-      this.replicas = []
-      this.model.removeNode(this)
+      this.replicas = [];
+      this.model.removeNode(this);
     })
   }
-  console.log(this.id + " moved to state " + this.state)
+  console.log(this.id + " moved to state " + this.state);
 }
 
 RoachNode.prototype.down = function() {
-  return this.state != "healthy"
+  return this.state != "healthy";
 }
 
 RoachNode.prototype.pctUsage = function(countLog) {
-  var pctUsage = (this.usage(countLog) * 100.0) / this.model.nodeCapacity
+  var pctUsage = (this.usage(countLog) * 100.0) / this.capacity;
   if (pctUsage > 100) {
-    pctUsage = 100
+    pctUsage = 100;
   }
-  return pctUsage
+  return pctUsage;
 }
 
 RoachNode.prototype.usage = function(countLog) {
-  var usage = 0
+  var usage = 0;
   for (var i = 0; i < this.replicas.length; i++) {
     if (this.replicas[i].range != null) {
-      usage += this.replicas[i].getSize(countLog)
+      usage += this.replicas[i].getSize(countLog);
     }
   }
-  return usage
+  return usage;
 }
 
 // leaderCount returns the number of replicas this node contains which
@@ -90,7 +91,7 @@ RoachNode.prototype.nonSplitting = function() {
 
 // Returns whether the node has space.
 RoachNode.prototype.hasSpace = function(size, countLog) {
-  return this.usage(countLog) + size <= this.model.nodeCapacity
+  return this.usage(countLog) + size <= this.capacity
 }
 
 RoachNode.prototype.setBusy = function(busy) {

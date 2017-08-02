@@ -11,12 +11,14 @@
 }
 
 .heading {
-    font: 48px helvetica;
+    font-size: 48px;
+    font-family: 'Lato', sans-serif;
     font-weight: bold
 }
 
 .stats {
-    font: 14px helvetica;
+    font-size: 14px;
+    font-family: 'Lato', sans-serif;
     font-weight: bold
 }
 
@@ -68,15 +70,65 @@
 }
 
 .locality-label {
-    fill: black;
+    fill: white;
     stroke-width: 0px;
-    font: 10px helvetica;
+    font-size: 10px;
+    font-family: 'Lato', sans-serif;
     font-weight: bold;
+}
+
+.locality-label-background {
+    fill: #595f6c;
+    stroke-width: 0px;
 }
 
 .current-locality {
     fill: black;
-    font: 24px helvetica;
+    font-size: 24px;
+    font-family: 'Lato', sans-serif;
+    font-weight: bold;
+}
+
+.capacity-background {
+    fill: #daeefa;
+    stroke: #51bbfd;
+    stroke-width: 0.25px;
+}
+
+.capacity-used {
+    fill: #51bbfd;
+    stroke: #51bbfd;
+}
+
+.capacity-label {
+    fill: #5abbfd;
+    stroke-width: 0px;
+    font-size: 8px;
+    font-family: 'Lato', sans-serif;
+    font-weight: bold;
+}
+
+.capacity-used-label {
+    fill: #51bbfd;
+    stroke-width: 0px;
+    font-size: 8px;
+    font-family: 'Lato', sans-serif;
+    font-weight: bold;
+}
+
+.capacity-used-pct-label {
+    fill: #51bbfd;
+    stroke-width: 0px;
+    font-size: 24px;
+    font-family: 'Lato', sans-serif;
+    font-weight: medium;
+}
+
+.capacity-used-text {
+    fill: #595f6c;
+    stroke-width: 0px;
+    font-size: 7px;
+    font-family: 'Lato', sans-serif;
     font-weight: bold;
 }
 

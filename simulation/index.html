@@ -3,6 +3,7 @@
 
 <head>
   <link rel="stylesheet" type="text/css" href="style.css" media="screen" />
+  <link href='http://fonts.googleapis.com/css?family=Lato:400,700' rel='stylesheet' type='text/css' />
 </head>
 
 <body>
@@ -23,8 +24,7 @@
   <script>
 
 function initModel(model) {
-  model.nodeRadius = 10;
-  model.nodeDistance = 30;
+  model.nodeRadius = 40;
   model.projection = d3.geo.mercator();
   model.skin = new Localities();
   model.enablePlayAndReload = false;
