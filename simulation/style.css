@@ -18,7 +18,6 @@
 
 .stats {
     font-size: 14px;
-    font-family: 'Lato', sans-serif;
     font-weight: bold
 }
 
@@ -35,6 +34,7 @@
     position: absolute;
     top: 0px;
     left: 0;
+    font-family: 'Lato', sans-serif;
 }
 
 .btn-addnode {
@@ -73,7 +73,6 @@
     fill: white;
     stroke-width: 0px;
     font-size: 10px;
-    font-family: 'Lato', sans-serif;
     font-weight: bold;
 }
 
@@ -85,8 +84,13 @@
 .current-locality {
     fill: black;
     font-size: 24px;
-    font-family: 'Lato', sans-serif;
     font-weight: bold;
+}
+
+.locality-link {
+    stroke: #ccc;
+    stroke-width: 1px;
+    fill-opacity: 0;
 }
 
 .capacity-background {
@@ -104,7 +108,6 @@
     fill: #5abbfd;
     stroke-width: 0px;
     font-size: 8px;
-    font-family: 'Lato', sans-serif;
     font-weight: bold;
 }
 
@@ -112,7 +115,6 @@
     fill: #51bbfd;
     stroke-width: 0px;
     font-size: 8px;
-    font-family: 'Lato', sans-serif;
     font-weight: bold;
 }
 
@@ -120,7 +122,6 @@
     fill: #51bbfd;
     stroke-width: 0px;
     font-size: 24px;
-    font-family: 'Lato', sans-serif;
     font-weight: medium;
 }
 
@@ -128,8 +129,35 @@
     fill: #595f6c;
     stroke-width: 0px;
     font-size: 7px;
-    font-family: 'Lato', sans-serif;
     font-weight: bold;
+}
+
+.client-activity {
+    stroke: #d95d4f;
+    stroke-linecap: round;
+    stroke-width: 4px;
+}
+
+.client-activity-label {
+    fill: #d95d4f;
+    stroke-width: 0px;
+    font-size: 8px;
+    font-weight: bold;
+    dominant-baseline: central;
+}
+
+.network-activity {
+    stroke: #152849;
+    stroke-linecap: round;
+    stroke-width: 4px;
+}
+
+.network-activity-label {
+    fill: #152849;
+    stroke-width: 0px;
+    font-size: 8px;
+    font-weight: bold;
+    dominant-baseline: central;
 }
 
 .node-unreachable {

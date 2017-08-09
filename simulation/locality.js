@@ -38,27 +38,49 @@ Locality.prototype.adjustLocation = function(i, count, radius) {
 }
 
 Locality.prototype.leaderCount = function() {
-  var count = 0
+  var count = 0;
   for (var i = 0; i < this.nodes.length; i++) {
-    count += this.nodes[i].leaderCount()
+    count += this.nodes[i].leaderCount();
   }
-  return count
+  return count;
 }
 
 Locality.prototype.usage = function() {
-  var usage = 0
+  var usage = 0;
   for (var i = 0; i < this.nodes.length; i++) {
-    usage += this.nodes[i].usage()
+    usage += this.nodes[i].usage();
   }
-  return usage
+  return usage;
 }
 
 Locality.prototype.capacity = function() {
-  var capacity = 0
+  var capacity = 0;
   for (var i = 0; i < this.nodes.length; i++) {
-    capacity += this.nodes[i].capacity
+    capacity += this.nodes[i].capacity;
   }
-  return capacity
+  return capacity;
+}
+
+Locality.prototype.clientActivity = function() {
+  var activity = 0;
+  for (var i = 0; i < this.nodes.length; i++) {
+    activity += this.nodes[i].clientActivity();
+  }
+  if (activity > this.model.maxClientActivity) {
+    this.model.maxClientActivity = activity;
+  }
+  return activity;
+}
+
+Locality.prototype.networkActivity = function() {
+  var activity = 0;
+  for (var i = 0; i < this.nodes.length; i++) {
+    activity += this.nodes[i].networkActivity();
+  }
+  if (activity > this.model.maxNetworkActivity) {
+    this.model.maxNetworkActivity = activity;
+  }
+  return activity;
 }
 
 // localityName extracts the locality name as the first element of the

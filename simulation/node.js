@@ -97,3 +97,11 @@ RoachNode.prototype.hasSpace = function(size, countLog) {
 RoachNode.prototype.setBusy = function(busy) {
   this.busy = busy
 }
+
+RoachNode.prototype.clientActivity = function() {
+  return Math.random() * (2<<16);
+}
+
+RoachNode.prototype.networkActivity = function() {
+  return Math.random() * (1<<16);
+}

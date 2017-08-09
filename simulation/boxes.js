@@ -11,17 +11,21 @@ function drawBox(w, h, cornerPct) {
 
 Boxes.prototype.init = function(mode) {}
 
+Boxes.prototype.maxRadius = function(model) {
+  return model.nodeRadius;
+}
+
 Boxes.prototype.locality = function(model, sel) {
   return sel.append("path")
-    .attr("d", function(d) { return drawBox(d.radius * 2, d.radius * 2.25, 0.1); })
+    .attr("d", function(d) { return drawBox(model.nodeRadius * 2, model.nodeRadius * 2.25, 0.1); })
     .attr("class", function(d) { return d.clazz; })
     .attr("visibility", "hidden");
 }
 
 Boxes.prototype.node = function(model, sel) {
   return sel.append("path")
-    .attr("d", function(d) { return drawBox(d.radius * 2, d.radius * 2.25, 0.1); })
-    .attr("transform", function(d) { return "translate(-" + d.radius + ",-" + d.radius + ")"; })
+    .attr("d", function(d) { return drawBox(model.nodeRadius * 2, model.nodeRadius * 2.25, 0.1); })
+    .attr("transform", function(d) { return "translate(-" + model.nodeRadius + ",-" + model.nodeRadius + ")"; })
   //.on("click", function(d) { d.clicked() })
     .attr("class", function(d) { return d.clazz; })
 }

@@ -30,11 +30,13 @@ function Model(id, width, height, initFn) {
   this.linkCount = 0;
   this.routeCount = 0;
   this.replicaCount = 0;
+  this.maxClientActivity = 1;
+  this.maxNetworkActivity = 1;
   this.exactRebalancing = false;
   this.currentLocality = [];
-  this.lastLocality = null;
   this.localities = [];
   this.localityCount = 0;
+  this.localityLinkCount = 0;
   this.defaultZoneConfig = [[], [], []]; // three replicas
   this.showHeartbeats = false;
   this.quiesceRaft = true;
@@ -96,6 +98,9 @@ Model.prototype.addLocality = function(locality) {
     var rl = {id: "link" + this.linkCount++, source: oLocality, target: locality, clazz: "link", latency: latency};
     oLocality.links[locality.id] = rl;
     this.links.push(rl);
+
+    // Add localityLinks from all pre-existing localities to this newly added locality.
+    this.localityLinks.push(new LocalityLink(oLocality, locality, this));
   }
 
   // Add to array of datacenters.
@@ -213,9 +218,21 @@ Model.prototype.start = function() {
     var that = this;
     setTimeout(function() { that.stop(); }, this.simTime);
   }
+  // Setup periodic display refresh.
+  this.setRefreshTimeout()
+}
+
+Model.prototype.setRefreshTimeout = function() {
+  clearTimeout(this.timeout);
+  var that = this;
+  this.timeout = setTimeout(function() {
+    that.refreshLayout();
+    that.setRefreshTimeout();
+  }, 1000);
 }
 
 Model.prototype.stop = function() {
+  clearTimeout(this.timeout);
   for (var i = 0; i < this.apps.length; i++) {
     this.apps[i].stop();
   }
@@ -272,6 +289,10 @@ Model.prototype.resetLocalities = function() {
   // Determine localities to display based on current locality.
   var localityMap = {};
   this.localities = [];
+  this.localityLinks = [];
+  this.localityScale = 1;
+  this.maxClientActivity = 1;
+  this.maxNetworkActivity = 1;
   this.links.length = [];
   for (var i = 0; i < this.roachNodes.length; i++) {
     var node = this.roachNodes[i];
@@ -288,10 +309,134 @@ Model.prototype.resetLocalities = function() {
     }
   }
   for (loc in localityMap) {
-    new Locality(localityMap[loc].locality, localityMap[loc].nodes, this);
+    var l = new Locality(localityMap[loc].locality, localityMap[loc].nodes, this);
+    // Initialize the max client and network activity values for the displayed localities.
+    l.clientActivity();
+    l.networkActivity();
   }
-
   this.layout();
+}
+
+function distance(n1, n2) {
+  return Math.sqrt((n1[0] - n2[0]) * (n1[0] - n2[0]) + (n1[1] - n2[1]) * (n1[1] - n2[1]));
+}
+
+function length(v) {
+  return Math.sqrt(v[0]*v[0] + v[1]*v[1]);
+}
+
+function add(v1, v2) {
+  return [v1[0] + v2[0], v1[1] + v2[1]];
+}
+
+function sub(v1, v2) {
+  return [v1[0] - v2[0], v1[1] - v2[1]];
+}
+
+function mult(v1, scalar) {
+  return [v1[0] * scalar, v1[1] * scalar];
+}
+
+function normalize(v) {
+  var l = length(v);
+  if (l == 0) {
+    return [0, 0];
+  }
+  return [v[0] / l, v[1] / l];
+}
+
+function invert(v) {
+  return [v[1], -v[0]];
+}
+
+// computeLocalityScale returns a scale factor in the interval (0, 1]
+// that allows for all localities to exist with no overlap.
+// TODO(spencer): use a quadtree for performance if there are many
+// localities.
+Model.prototype.computeLocalityScale = function() {
+  var scale = 1,
+      maxDistance = this.skin.maxRadius(this) * 2;
+  for (var i = 0; i < this.localityLinks.length; i++) {
+    var link = this.localityLinks[i],
+        l1 = this.projection(link.l1.location),
+        l2 = this.projection(link.l2.location),
+        d = distance(l1, l2);
+    link.l1.pos = l1;
+    link.l2.pos = l2;
+    if (d < maxDistance) {
+      var newScale = d / maxDistance;
+      if (newScale < scale) {
+        scale = newScale;
+      }
+    }
+  }
+  this.localityScale = scale;
+}
+
+// findClosestPoint locates the closest point on the vector starting
+// from point s and extending through u (t=1), nearest to point p.
+// Returns an empty vector if the closest point is either start or end
+// point or located before or after the line segment defined by [s,
+// e].
+function findClosestPoint(s, e, p) {
+  // u = e - s
+  // v = s+tu - p
+  // d = length(v)
+  // d = length((s-p) + tu)
+  // d = sqrt(([s-p].x + tu.x)^2 + ([s-p].y + tu.y)^2)
+  // d = sqrt([s-p].x^2 + 2[s-p].x*tu.x + t^2u.x^2 + [s-p].y^2 + 2[s-p].y*tu.y + t^2*u.y^2)
+  // ...minimize with first derivative with respect to t
+  // 0 = 2[s-p].x*u.x + 2tu.x^2 + 2[s-p].y*u.y + 2tu.y^2
+  // 0 = [s-p].x*u.x + tu.x^2 + [s-p].y*u.y + tu.y^2
+  // t*(u.x^2 + u.y^2) = [s-p].x*u.x + [s-p].y*u.y
+  // t = ([s-p].x*u.x + [s-p].y*u.y) / (u.x^2 + u.y^2)
+  var u = sub(e, s),
+      d = sub(s, p),
+      t = -(d[0]*u[0] + d[1]*u[1]) / (u[0]*u[0] + u[1]*u[1]);
+  if (t <= 0 || t >= 1) {
+    return [0, 0];
+  }
+  return add(s, mult(u, t));
+}
+
+// computeLocalityLinkPaths starts with a line between the outer radii
+// of each locality. Each line is drawn as a cardinal curve. This
+// initially straight curve is intersected with each locality and bent
+// in order to avoid intersection. The bending is straightforward and
+// will by no means avoid intersections entirely.
+Model.prototype.computeLocalityLinkPaths = function() {
+  var maxR = this.nodeRadius * this.localityScale;
+  for (var i = 0; i < this.localityLinks.length; i++) {
+    var link = this.localityLinks[i],
+        vec = sub(link.l2.pos, link.l1.pos),
+        len = length(vec),
+        norm = normalize(vec),
+        skip = maxR;
+    link.points = [link.l1.pos, add(link.l1.pos, mult(norm, skip))];
+
+    // Bend the curve around any intersected localities.
+    for (var j = 0; j < this.localities.length; j++) {
+      var loc = this.localities[j],
+          closest = findClosestPoint(link.l1.pos, link.l2.pos, loc.pos);
+      if (closest != [0, 0]) {
+        if (distance(closest, loc.pos) < maxR*1.5) {
+          var invertNorm = invert(norm),
+              perpV = mult(invertNorm, maxR*1.5),
+              dir1 = add(loc.pos, perpV),
+              dir2 = sub(loc.pos, perpV);
+          if (distance(closest, dir1) < distance(closest, dir2)) {
+            link.points.push(dir1);
+          } else {
+            link.points.push(dir2);
+          }
+        }
+      }
+    }
+
+    // Add remaining points to the curve.
+    link.points.push(sub(link.l2.pos, mult(norm, skip)));
+    link.points.push(link.l2.pos);
+  }
 }
 
 Model.prototype.layout = function() {
@@ -299,6 +444,17 @@ Model.prototype.layout = function() {
   for (var i = 0; i < this.tables.length; i++) {
     this.tables[i].flush();
   }
+  this.refreshLayout();
+}
+
+Model.prototype.refreshLayout = function() {
+  for (var i = 0; i < this.localities.length; i++) {
+    var l = this.localities[i],
+        capacity = l.capacity();
+    l.usageBytes = l.usage();
+    l.usagePct = l.usageBytes / capacity;
+  }
+  refreshModel(this);
 }
 
 Model.prototype.packRanges = function(node) {

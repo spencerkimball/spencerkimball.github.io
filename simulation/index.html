@@ -8,8 +8,11 @@
 
 <body>
   <script src="d3.v3.js"></script>
+  <script src="d3-path.v1.min.js"></script>
+  <script src="d3-shape.v1.min.js"></script>
   <script src="model.js"></script>
   <script src="locality.js"></script>
+  <script src="locality_link.js"></script>
   <script src="node.js"></script>
   <script src="table.js"></script>
   <script src="range.js"></script>
@@ -143,7 +146,7 @@ function initModel(model) {
   };
 
   // Add nodes in multiple rack in each city.
-  var numRacks = 4,
+  var numRacks = 3,
       numNodes = 5;
   for (regionName in Regions) {
     var region = Regions[regionName]
