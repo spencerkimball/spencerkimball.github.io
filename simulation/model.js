@@ -220,7 +220,7 @@ Model.prototype.setRefreshTimeout = function() {
   this.timeout = setTimeout(function() {
     that.refreshLayout();
     that.setRefreshTimeout();
-  }, 5000);
+  }, 2500);
 }
 
 Model.prototype.stop = function() {
