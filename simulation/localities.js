@@ -50,11 +50,6 @@ Localities.prototype.locality = function(model, sel) {
 
   sel.attr("transform", "translate(" + -100 + ", " + -100 + ")");
 
-  // Circle for mouse events.
-  sel.append("circle")
-    .style("opacity", 0)
-    .attr("r", radius);
-
   // Capacity arc.
   sel.append("path")
     .attr("d", function(d) { return createArc(radius, arcWidth, arcAngleFromPct(0), arcAngleFromPct(1)); })
@@ -132,6 +127,19 @@ Localities.prototype.locality = function(model, sel) {
     .attr("alignment-baseline", "middle")
     .attr("text-anchor", "middle")
     .text(function(d) { return d.name; });
+
+  // Expand label.
+  sel.append("text")
+    .attr("class", "expand-label")
+    .attr("transform", "translate(0, " + (-1.1 * radius) + ")")
+    .attr("opacity", 0)
+    .text(function(d) { return d.nodes.length > 1 ? "Expand x" + d.nodes.length : ""; });
+
+  // Circle for mouse events.
+  sel.append("circle")
+    .style("opacity", 0)
+    .attr("r", radius)
+    .style("cursor", "pointer");
 }
 
 Localities.prototype.localityLink = function(model, sel) {

@@ -15,6 +15,12 @@ d3.selection.prototype.moveToBack = function() {
 }
 
 function addModel(model) {
+  window.onpopstate = function(event) {
+    var model = findModel(event.state.modelID),
+        locality = event.state.locality;
+    zoomToLocality(model, 750, locality);
+  }
+
   var div = d3.select("#" + model.id);
 
   model.svgParent = div.append("div")
@@ -179,10 +185,18 @@ function showLocalityLinks(model, locality) {
     .transition()
     .duration(250)
     .attr("opacity", function(d) { return (d.l1 == locality || d.l2 == locality) ? 1 : 0; });
+  model.svg.selectAll(".expand-label")
+    .transition()
+    .duration(250)
+    .attr("opacity", function(d) { return (d == locality) ? 1 : 0; });
 }
 
 function hideLocalityLinks(model, locality) {
   model.svg.selectAll(".locality-link-group")
+    .transition()
+    .duration(250)
+    .attr("opacity", 0);
+  model.svg.selectAll(".expand-label")
     .transition()
     .duration(250)
     .attr("opacity", 0);
@@ -249,7 +263,7 @@ function layoutProjection(model) {
   d3.select("body")
     .on("keydown", function() {
       if (d3.event.keyCode == 27 /* esc */ && model.currentLocality.length > 0) {
-        zoomToLocality(model, 750, model.currentLocality.slice(0, -1));
+        window.history.back();
       }
     });
   model.projectionG = model.svgParent.append("g");
@@ -310,7 +324,11 @@ function layoutModel(model) {
     .locality(model, model.localitySel.enter().append("g")
               .attr("id", function(d) { return d.id; })
               .attr("class", "locality")
-              .on("click", function(d) { hideLocalityLinks(model, d); zoomToLocality(model, 750, d.locality); })
+              .on("click", function(d) {
+                hideLocalityLinks(model, d);
+                zoomToLocality(model, 750, d.locality);
+                history.pushState({modelID: model.id, locality: model.currentLocality.slice(0)}, "");
+              })
               .on("mouseover", function(d) { showLocalityLinks(model, d); })
               .on("mouseout", function(d) { hideLocalityLinks(model, d); }));
   model.localitySel.exit()

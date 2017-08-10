@@ -147,8 +147,8 @@ function initModel(model) {
   };
 
   // Add nodes in multiple rack in each city.
-  var numRacks = 3,
-      numNodes = 5;
+  var numRacks = 1,
+      numNodes = 8;
   for (regionName in Regions) {
     var region = Regions[regionName]
     for (cityName in region.cities) {
@@ -156,7 +156,12 @@ function initModel(model) {
       for (var k = 0; k < numRacks; k++) {
         for (var l = 0; l < numNodes; l++) {
           // Create localities for rack, datacenter (city here), and region.
-          var locality = ["region=" + region.name, "city=" + city.name, "rack=rack " + k];
+          var locality;
+          if (numRacks > 1) {
+            locality = ["region=" + region.name, "city=" + city.name, "rack=rack " + k];
+          } else {
+            locality = ["region=" + region.name, "city=" + city.name];
+          }
           new RoachNode("10.10." + (k + 1) + "." + (l + 1), city.location, locality, model);
         }
       }
@@ -214,7 +219,7 @@ function initModel(model) {
   new App(["city=Brisbane"], [app4T1, app4T2, app4T3], model);
 
   // App5 lives only in Mountain View.
-  var mtvConfig = [["city=Mountain View", "rack=rack 0"], ["city=Mountain View", "rack=rack 1"], ["city=Mountain View", "rack=rack 2"]];
+  var mtvConfig = [["city=Mountain View"], ["city=Mountain View"], ["city=Mountain View"]];
   var app5T1 = new Table("mtv.app5.account", mtvConfig, model.splitSize * 2, model);
   var app5T2 = new Table("mtv.app5.ledger", mtvConfig, model.splitSize * 4, model);
   var app5T3 = new Table("mtv.app5.transaction_leg", mtvConfig, model.splitSize * 10, model);

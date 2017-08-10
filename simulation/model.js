@@ -481,6 +481,15 @@ Model.prototype.setNodeUnreachable = function(node, endFn) {
   setNodeUnreachable(this, node, endFn);
 }
 
+function findModel(id) {
+  for (var i = 0; i < models.length; i++) {
+    if (models[i].id == id) {
+      return models[i];
+    }
+  }
+  return null;
+}
+
 function restart(modelIdx) {
   var model = models[modelIdx];
   model.restart();
