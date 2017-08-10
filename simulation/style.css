@@ -87,12 +87,6 @@
     font-weight: bold;
 }
 
-.locality-link {
-    stroke: #ccc;
-    stroke-width: 1px;
-    fill-opacity: 0;
-}
-
 .capacity-background {
     fill: #daeefa;
     stroke: #51bbfd;
@@ -158,6 +152,35 @@
     font-size: 8px;
     font-weight: bold;
     dominant-baseline: central;
+}
+
+.locality-link {
+    stroke: #ccc;
+    stroke-width: 1.5px;
+    fill-opacity: 0;
+}
+
+.incoming-throughput-label {
+    fill: #33830c;
+    stroke-width: 0px;
+    font-size: 8px;
+    text-anchor: end;
+}
+
+.outgoing-throughput-label {
+    fill: #82cc00;
+    stroke-width: 0px;
+    font-size: 8px;
+    text-anchor: end;
+    alignment-baseline: hanging;
+}
+
+.rtt-label {
+    fill: #152849;
+    stroke-width: 0px;
+    font-size: 8px;
+    text-anchor: start;
+    alignment-baseline: middle;
 }
 
 .node-unreachable {

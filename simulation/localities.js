@@ -30,6 +30,10 @@ function bytesToActivity(bytes) {
   return Math.round(bytes * 10 / Math.pow(1024, i), 2) / 10 + ' ' + sizes[i];
 }
 
+function latencyMilliseconds(latency) {
+  return Math.round(latency * 10) / 10 + ' ms';
+}
+
 function Localities() {
 }
 
@@ -130,46 +134,72 @@ Localities.prototype.locality = function(model, sel) {
     .text(function(d) { return d.name; });
 }
 
-Localities.prototype.update = function(model, sel) {
+Localities.prototype.localityLink = function(model, sel) {
+  sel.append("path")
+    .attr("id", function(d) { return d.id + "-path"; })
+    .attr("class", "locality-link");
+
+  sel.append("text")
+    .attr("id", function(d) { return "incoming-" + d.id; })
+    .append("textPath")
+    .attr("class", "incoming-throughput-label")
+    .attr("startOffset", "50%")
+    .attr("xlink:href", function(d) { return "#" + d.id + "-path"; });
+  sel.append("text")
+    .attr("id", function(d) { return "outgoing-" + d.id; })
+    .append("textPath")
+    .attr("class", "outgoing-throughput-label")
+    .attr("startOffset", "50%")
+    .attr("xlink:href", function(d) { return "#" + d.id + "-path"; })
+  sel.append("text")
+    .attr("id", function(d) { return "rtt-" + d.id; })
+    .append("textPath")
+    .attr("class", "rtt-label")
+    .attr("startOffset", "60%")
+    .attr("xlink:href", function(d) { return "#" + d.id + "-path"; })
+}
+
+Localities.prototype.update = function(model, locSel, linkSel) {
   var radius = model.nodeRadius,
       arcWidth = model.nodeRadius / 10;
 
-  sel.selectAll(".capacity-used")
+  locSel.selectAll(".capacity-used")
     .transition()
     .duration(250)
     .attr("d", function(d) {
       return createArc(radius, arcWidth, arcAngleFromPct(0), arcAngleFromPct(d.usagePct));
     });
-  sel.selectAll(".capacity-used-label")
+  locSel.selectAll(".capacity-used-label")
     .transition()
     .duration(250)
     .attr("x", function(d) { return (radius + arcWidth) * Math.cos(angleFromPct(d.usagePct)); })
     .attr("y", function(d) { return (radius + arcWidth) * Math.sin(angleFromPct(d.usagePct)); })
     .attr("text-anchor", function(d) { return (d.usagePct < 0.75) ? "end" : "start"; })
     .text(function(d) { return bytesToSize(d.usageBytes * model.unitSize); });
-  sel.selectAll(".capacity-used-pct-label")
+  locSel.selectAll(".capacity-used-pct-label")
     .text(function(d) { return Math.round(100 * d.usagePct) + "%"; });
 
   var barsX = (radius - arcWidth) * Math.cos(angleFromPct(0)),
       barsWidth = radius - barsX - 4;
-  sel.selectAll(".client-activity")
+  locSel.selectAll(".client-activity")
     .transition()
     .duration(250)
-    .attr("x2", function(d) { return Math.round(radius - barsWidth * (d.clientActivity() / model.maxClientActivity)); });
-  sel.selectAll(".client-activity-label")
-    .text(function(d) { return bytesToActivity(d.clientActivity()); });
-  sel.selectAll(".network-activity")
+    .attr("x2", function(d) { return Math.round(radius - barsWidth * (d.cachedClientActivity / model.maxClientActivity)); });
+  locSel.selectAll(".client-activity-label")
+    .text(function(d) { return bytesToActivity(d.cachedClientActivity); });
+  locSel.selectAll(".network-activity")
     .transition()
     .duration(250)
-    .attr("x2", function(d) { return Math.round(radius - barsWidth * (d.networkActivity() / model.maxNetworkActivity)); });
-  sel.selectAll(".network-activity-label")
-    .text(function(d) { return bytesToActivity(d.networkActivity()); });
-}
+    .attr("x2", function(d) { return Math.round(radius - barsWidth * (d.cachedTotalNetworkActivity / model.maxNetworkActivity)); });
+  locSel.selectAll(".network-activity-label")
+    .text(function(d) { return bytesToActivity(d.cachedTotalNetworkActivity); });
 
-Localities.prototype.localityLink = function(model, sel) {
-  sel.append("path")
-    .attr("class", "locality-link")
-    .attr("stroke-opacity", 0);
+  linkSel.selectAll(".incoming-throughput-label")
+    .text(function(d) { return "←" + bytesToActivity(d.cachedNetworkActivity[1]); });
+  linkSel.selectAll(".outgoing-throughput-label")
+    .text(function(d) { return bytesToActivity(d.cachedNetworkActivity[0]) + "→"; });
+  linkSel.selectAll(".rtt-label")
+    .text(function(d) { return latencyMilliseconds(d.cachedNetworkActivity[2]); });
 }
 
 Localities.prototype.node = function(model, sel) {

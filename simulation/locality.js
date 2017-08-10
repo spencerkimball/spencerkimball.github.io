@@ -7,8 +7,8 @@ function Locality(locality, nodes, model) {
   this.clazz = "locality";
   this.model = model;
   this.location = this.findCentroid();
-  this.tx = 0;
-  this.ty = 0;
+  this.cachedTotalNetworkActivity = 0;
+  this.cachedClientActivity = 0;
   this.model.addLocality(this);
 }
 
@@ -72,11 +72,13 @@ Locality.prototype.clientActivity = function() {
   return activity;
 }
 
-Locality.prototype.networkActivity = function() {
-  var activity = 0;
+Locality.prototype.totalNetworkActivity = function() {
+  var total = [0, 0];
   for (var i = 0; i < this.nodes.length; i++) {
-    activity += this.nodes[i].networkActivity();
+    var activity = this.nodes[i].networkActivity();
+    total = [total[0] + activity[0], total[1] + activity[1]];
   }
+  var activity = total[0] + total[1]
   if (activity > this.model.maxNetworkActivity) {
     this.model.maxNetworkActivity = activity;
   }
@@ -89,12 +91,31 @@ function localityName(locality) {
   if (locality.length == 0) {
     return "Global";
   }
-  var name = locality[locality.length-1];
-  var idx = name.indexOf("=");
+  var name = locality[locality.length - 1],
+      idx = name.indexOf("=");
   if (idx != -1) {
     return name.substr(idx + 1, name.length);
   }
   return name;
+}
+
+function fullLocalityName(locality) {
+  if (locality.length == 0) {
+    return "Global";
+  }
+  var fullName = "";
+  for (var i = 0; i < locality.length; i++) {
+    var name = locality[i],
+        idx = name.indexOf("=");
+    if (idx != -1) {
+      name = name.substr(idx + 1, name.length);
+    }
+    if (fullName.length > 0) {
+      fullName += " / ";
+    }
+    fullName += name;
+  }
+  return fullName;
 }
 
 // localityKey concatenates locality information into a comma-separated

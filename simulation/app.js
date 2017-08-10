@@ -5,6 +5,7 @@ function App(zone, tables, model) {
   this.tables = tables;
   this.retries = 0;
   this.stopped = true;
+  this.routes = {};
   // Select a roachNode from within nodes matching the specified zone.
   var nodes = model.findMatchingNodes(zone);
   if (nodes.length == 0) {
@@ -60,8 +61,8 @@ App.prototype.write = function() {
   var table = this.tables[Math.floor(Math.random() * this.tables.length)];
   var range = table.ranges[Math.floor(Math.random() * table.ranges.length)];
   if (range.leader != null) {
-    var size = Math.random() * this.model.reqSize;
+    var size = this.model.reqSize * 0.75 + (0.25 * Math.random() * this.model.reqSize);
     req = new Request(new DataPayload(size), range.leader, this, this.model);
-    req.route(this.roachNode, null);
+    req.route(this, null);
   }
 }

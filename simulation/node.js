@@ -13,6 +13,7 @@ function RoachNode(name, location, locality, model) {
   this.clazz = "roachnode";
   this.state = "healthy";
   this.replicas = [];
+  this.apps = [];
   this.children = this.replicas;
   this.routes = {};
   this.busy = false;
@@ -50,6 +51,10 @@ RoachNode.prototype.clicked = function() {
 
 RoachNode.prototype.down = function() {
   return this.state != "healthy";
+}
+
+RoachNode.prototype.addApp = function(app) {
+  this.apps.push(app);
 }
 
 RoachNode.prototype.pctUsage = function(countLog) {
@@ -99,9 +104,31 @@ RoachNode.prototype.setBusy = function(busy) {
 }
 
 RoachNode.prototype.clientActivity = function() {
-  return Math.random() * (2<<16);
+  var activity = 0;
+  for (var i = 0; i < this.apps.length; i++) {
+    var app = this.apps[i];
+    activity += app.routes[app.roachNode.id].getThroughput();
+  }
+  return activity;
 }
 
-RoachNode.prototype.networkActivity = function() {
-  return Math.random() * (1<<16);
+// networkActivity returns a tuple of values: [outgoing throughput,
+// incoming throughput, average latency]. Throughput values are in
+// bytes / s; latency is in milliseconds. If filter is null, all
+// connected nodes are measured; otherwise, only nodes with IDs in
+// filter are measured.
+RoachNode.prototype.networkActivity = function(filter) {
+  var activity = [0, 0, 0],
+      count = 0;
+  for (key in this.routes) {
+    var route = this.routes[key];
+    if (filter == null || (route.target.id in filter)) {
+      activity[0] += route.getThroughput()
+      activity[1] += route.target.routes[this.id].getThroughput();
+      activity[2] += route.latency;
+      count++;
+    }
+  }
+  activity[2] /= count;
+  return activity;
 }

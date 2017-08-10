@@ -36,6 +36,7 @@ function Model(id, width, height, initFn) {
   this.currentLocality = [];
   this.localities = [];
   this.localityCount = 0;
+  this.localityLinks = [];
   this.localityLinkCount = 0;
   this.defaultZoneConfig = [[], [], []]; // three replicas
   this.showHeartbeats = false;
@@ -86,20 +87,9 @@ Model.prototype.setLocality = function(locality) {
 }
 
 Model.prototype.addLocality = function(locality) {
-  // Link this locality to all others.
-  var coords = this.projection(locality.location);
   for (var i = 0; i < this.localities.length; i++) {
-    var oLocality = this.localities[i];
-    var oCoords = this.projection(oLocality.location);
-    latency = 4000 * Math.sqrt((coords[0] - oCoords[0]) * (coords[0] - oCoords[0]) + (coords[1] - oCoords[1]) * (coords[1] - oCoords[1])) / viewWidth;
-    var l = {id: "link" + this.linkCount++, source: locality, target: oLocality, clazz: "link", latency: latency};
-    locality.links[oLocality.id] = l;
-    this.links.push(l);
-    var rl = {id: "link" + this.linkCount++, source: oLocality, target: locality, clazz: "link", latency: latency};
-    oLocality.links[locality.id] = rl;
-    this.links.push(rl);
-
     // Add localityLinks from all pre-existing localities to this newly added locality.
+    var oLocality = this.localities[i];
     this.localityLinks.push(new LocalityLink(oLocality, locality, this));
   }
 
@@ -149,10 +139,10 @@ Model.prototype.addNode = function(node) {
   for (var i = 0; i < this.roachNodes.length; i++) {
     var oNode = this.roachNodes[i];
     var oCoords = this.projection(oNode.location);
-    var latency = 4000 * Math.sqrt((coords[0] - oCoords[0]) * (coords[0] - oCoords[0]) + (coords[1] - oCoords[1]) * (coords[1] - oCoords[1])) / viewWidth;
-    var l = {id: "route" + this.routeCount++, source: node, target: oNode, clazz: "route", latency: latency};
+    var latency = 750 * Math.sqrt((coords[0] - oCoords[0]) * (coords[0] - oCoords[0]) + (coords[1] - oCoords[1]) * (coords[1] - oCoords[1])) / viewWidth;
+    var l = new Link(node, oNode, "route", latency, this);
     node.routes[oNode.id] = l;
-    var rl = {id: "route" + this.routeCount++, source: oNode, target: node, clazz: "route", latency: latency};
+    var rl = new Link(oNode, node, "route", latency, this);
     oNode.routes[node.id] = rl;
   }
 
@@ -187,6 +177,8 @@ Model.prototype.addTable = function(table) {
 // requests directly from the gateway node they're connected to.
 Model.prototype.addApp = function(app) {
   this.apps.push(app);
+  app.roachNode.addApp(app);
+  app.routes[app.roachNode.id] = new Link(app, app.roachNode, "route", 0, this);;
 }
 
 Model.prototype.removeApp = function(app) {
@@ -228,7 +220,7 @@ Model.prototype.setRefreshTimeout = function() {
   this.timeout = setTimeout(function() {
     that.refreshLayout();
     that.setRefreshTimeout();
-  }, 1000);
+  }, 5000);
 }
 
 Model.prototype.stop = function() {
@@ -312,7 +304,7 @@ Model.prototype.resetLocalities = function() {
     var l = new Locality(localityMap[loc].locality, localityMap[loc].nodes, this);
     // Initialize the max client and network activity values for the displayed localities.
     l.clientActivity();
-    l.networkActivity();
+    l.totalNetworkActivity();
   }
   this.layout();
 }
@@ -347,6 +339,10 @@ function normalize(v) {
 
 function invert(v) {
   return [v[1], -v[0]];
+}
+
+function dotprod(v1, v2) {
+  return v1[0] * v2[0] + v1[1] * v2[1];
 }
 
 // computeLocalityScale returns a scale factor in the interval (0, 1]
@@ -407,8 +403,14 @@ function findClosestPoint(s, e, p) {
 Model.prototype.computeLocalityLinkPaths = function() {
   var maxR = this.nodeRadius * this.localityScale;
   for (var i = 0; i < this.localityLinks.length; i++) {
-    var link = this.localityLinks[i],
-        vec = sub(link.l2.pos, link.l1.pos),
+    var link = this.localityLinks[i];
+    // Make sure the link goes from left to right.
+    if (link.l1.pos > link.l2.pos) {
+      var l1Tmp = link.l1;
+      link.l1 = link.l2;
+      link.l2 = l1Tmp;
+    }
+    var vec = sub(link.l2.pos, link.l1.pos),
         len = length(vec),
         norm = normalize(vec),
         skip = maxR;
@@ -453,6 +455,12 @@ Model.prototype.refreshLayout = function() {
         capacity = l.capacity();
     l.usageBytes = l.usage();
     l.usagePct = l.usageBytes / capacity;
+    l.cachedClientActivity = l.clientActivity();
+    l.cachedTotalNetworkActivity = l.totalNetworkActivity();
+  }
+  for (var i = 0; i < this.localityLinks.length; i++) {
+    var ll = this.localityLinks[i];
+    ll.cachedNetworkActivity = ll.networkActivity();
   }
   refreshModel(this);
 }

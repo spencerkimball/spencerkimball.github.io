@@ -49,6 +49,11 @@ Request.prototype.propagateError = function() {
 
 Request.prototype.route = function(sourceNode, endFn) {
   var destNode = this.destReplica.roachNode;
+  if (destNode.id == sourceNode.id) {
+    // Loopback; just process the requeest without sending further.
+    this.process(endFn);
+    return;
+  }
   if (destNode.id in sourceNode.routes) {
     this.writeDirect(sourceNode, destNode, endFn);
     return;
@@ -59,7 +64,7 @@ Request.prototype.route = function(sourceNode, endFn) {
     return;
   }
   // Uh oh.
-  console.log("ERROR: cannot route request");
+  console.log("ERROR: cannot route request from " + sourceNode.id + " to " + destNode.id);
 }
 
 Request.prototype.writeDirect = function(sourceNode, targetNode, endFn) {
@@ -80,6 +85,7 @@ Request.prototype.writeDirect = function(sourceNode, targetNode, endFn) {
     if (targetNode != destNode) {
       // If we're not at the correct node yet, route.
       that.route(targetNode, endFn);
+      route.record(that);
       return true;
     } else {
       // Check if the leader has changed; if so, and this request has
@@ -87,27 +93,34 @@ Request.prototype.writeDirect = function(sourceNode, targetNode, endFn) {
       if (that.replicated.length == 0 && !that.destReplica.isLeader()) {
         that.destReplica = that.destReplica.range.leader;
         that.route(targetNode, endFn);
+        route.record(that);
         //console.log(req.id + " being reforwarded to changed leader")
         return true;
       }
-      // We've arrived at the correct replica; try to add the request
-      // to the replica. If there's no space here and we're the
-      // leader, fail the request immediately (i.e. skip forwarding to
-      // followers).
-      that.success = that.payload.canSucceed();
-      if (endFn != null) {
-        endFn();
-      } else {
-        that.destReplica.range.add(that);
-        if (!that.success && that.destReplica.isLeader()) {
-          //console.log(req.id + " arrived at full leader; propagating error without forwarding")
-          that.propagateError();
-        }
-      }
+      that.process(endFn);
+      route.record(that);
       return that.success;
     }
     return true;
   })
+}
+
+Request.prototype.process = function(endFn) {
+  // We've arrived at the correct replica; try to add the request
+  // to the replica. If there's no space here and we're the
+  // leader, fail the request immediately (i.e. skip forwarding to
+  // followers).
+  this.success = this.payload.canSucceed();
+  if (endFn != null) {
+    endFn();
+  } else {
+    this.destReplica.range.add(this);
+    if (!this.success && this.destReplica.isLeader()) {
+      //console.log(req.id + " arrived at full leader; propagating error without forwarding")
+      this.propagateError();
+    }
+  }
+  return this.success;
 }
 
 function DataPayload(size) {

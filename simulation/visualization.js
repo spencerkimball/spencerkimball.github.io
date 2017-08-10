@@ -39,7 +39,7 @@ function addModel(model) {
     .attr("class", "current-locality")
     .attr("dx", function(d) { return "22"; })
     .attr("dy", function(d) { return "1em"; })
-    .text(localityName(model.currentLocality));
+    .text(fullLocalityName(model.currentLocality));
 
   if (model.displaySimState) {
     model.rpcSendCount = 0;
@@ -133,7 +133,7 @@ function zoomToLocality(model, duration, locality) {
     .duration(duration / 2)
     .style("opacity", 0)
     .each("end", function() {
-      localityLabel.text(localityName(model.currentLocality))
+      localityLabel.text(fullLocalityName(model.currentLocality))
         .style("opacity", 0)
         .transition()
         .duration(duration / 2)
@@ -175,17 +175,17 @@ function zoomToLocality(model, duration, locality) {
 }
 
 function showLocalityLinks(model, locality) {
-  model.localityLinkSel.selectAll("path")
+  model.svg.selectAll(".locality-link-group")
     .transition()
     .duration(250)
-    .attr("stroke-opacity", function(d) { return (d.l1 == locality || d.l2 == locality) ? 1 : 0; });
+    .attr("opacity", function(d) { return (d.l1 == locality || d.l2 == locality) ? 1 : 0; });
 }
 
 function hideLocalityLinks(model, locality) {
-  model.localityLinkSel.selectAll("path")
+  model.svg.selectAll(".locality-link-group")
     .transition()
     .duration(250)
-    .attr("stroke-opacity", 0);
+    .attr("opacity", 0);
 }
 
 function layoutProjection(model) {
@@ -293,13 +293,16 @@ function layoutModel(model) {
   linkSel.exit()
     .remove();
 
-  model.localityLinkSel = model.svg.selectAll(".locality-link")
+  // Create the link paths first, because we'd like to have them sort
+  // behind everything else in z-order.
+  model.localityLinkSel = model.svg.selectAll(".locality-link-group")
     .data(model.localityLinks, function(d) { return d.id; });
   model.skin
     .localityLink(model, model.localityLinkSel.enter().append("g")
+                  .attr("class", "locality-link-group")
+                  .attr("opacity", 0)
                   .attr("id", function(d) { return d.id; }));
-  model.localityLinkSel.exit()
-    .remove();
+  model.localityLinkSel.exit().remove();
 
   model.localitySel = model.svg.selectAll(".locality")
       .data(model.localities, function(d) { return d.id; });
@@ -307,7 +310,7 @@ function layoutModel(model) {
     .locality(model, model.localitySel.enter().append("g")
               .attr("id", function(d) { return d.id; })
               .attr("class", "locality")
-              .on("click", function(d) { zoomToLocality(model, 750, d.locality); })
+              .on("click", function(d) { hideLocalityLinks(model, d); zoomToLocality(model, 750, d.locality); })
               .on("mouseover", function(d) { showLocalityLinks(model, d); })
               .on("mouseout", function(d) { hideLocalityLinks(model, d); }));
   model.localitySel.exit()
@@ -322,6 +325,19 @@ function layoutModel(model) {
     .duration(750)
     .style("fill-opacity", 1)
     .style("stroke-opacity", 1);
+
+  model.localityLinkSel.selectAll(".locality-link-group")
+    .append("use")
+    .attr("id", function(d) { return "incoming-" + d.id + "-path"; })
+    .attr("xlink:href", function(d) { return "#incoming-" + d.id; });
+  model.localityLinkSel.selectAll(".locality-link-group")
+    .append("use")
+    .attr("id", function(d) { return "outgoing-" + d.id + "-path"; })
+    .attr("xlink:href", function(d) { return "#outgoing-" + d.id; });
+  model.localityLinkSel.selectAll(".locality-link-group")
+    .append("use")
+    .attr("id", function(d) { return "rtt-" + d.id + "-path"; })
+    .attr("xlink:href", function(d) { return "#rtt-" + d.id; });
 
   if (model.enablePlayAndReload) {
     model.controls.transition()
@@ -343,6 +359,9 @@ function layoutModel(model) {
 
     model.localitySel
       .attr("transform", function(d) {
+        if (d == null) {
+          return;
+        }
         var loc = d.pos;
         d.x = loc[0];
         d.y = loc[1];
@@ -354,14 +373,15 @@ function layoutModel(model) {
       .attr("y1", function(d) { return d.source.y; })
       .attr("x2", function(d) { return d.target.x; })
       .attr("y2", function(d) { return d.target.y; });
+
+    refreshModel(model);
   }
   model.redraw();
 }
 
 function refreshModel(model) {
   if (model.svg == null) return;
-
-  model.skin.update(model, model.localitySel);
+  model.skin.update(model, model.localitySel, model.localityLinkSel);
 }
 
 function setNodeHealthy(model, n) {
