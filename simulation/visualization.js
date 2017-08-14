@@ -16,6 +16,12 @@ d3.selection.prototype.moveToBack = function() {
 
 function addModel(model) {
   window.onpopstate = function(event) {
+    if (event.state == null) {
+      for (var i = 0; i < models.length; i++) {
+        zoomToLocality(models[i], 750, []);
+      }
+      return;
+    }
     var model = findModel(event.state.modelID),
         locality = event.state.locality;
     zoomToLocality(model, 750, locality);
@@ -307,17 +313,6 @@ function layoutModel(model) {
   linkSel.exit()
     .remove();
 
-  // Create the link paths first, because we'd like to have them sort
-  // behind everything else in z-order.
-  model.localityLinkSel = model.svg.selectAll(".locality-link-group")
-    .data(model.localityLinks, function(d) { return d.id; });
-  model.skin
-    .localityLink(model, model.localityLinkSel.enter().append("g")
-                  .attr("class", "locality-link-group")
-                  .attr("opacity", 0)
-                  .attr("id", function(d) { return d.id; }));
-  model.localityLinkSel.exit().remove();
-
   model.localitySel = model.svg.selectAll(".locality")
       .data(model.localities, function(d) { return d.id; });
   model.skin
@@ -344,18 +339,14 @@ function layoutModel(model) {
     .style("fill-opacity", 1)
     .style("stroke-opacity", 1);
 
-  model.localityLinkSel.selectAll(".locality-link-group")
-    .append("use")
-    .attr("id", function(d) { return "incoming-" + d.id + "-path"; })
-    .attr("xlink:href", function(d) { return "#incoming-" + d.id; });
-  model.localityLinkSel.selectAll(".locality-link-group")
-    .append("use")
-    .attr("id", function(d) { return "outgoing-" + d.id + "-path"; })
-    .attr("xlink:href", function(d) { return "#outgoing-" + d.id; });
-  model.localityLinkSel.selectAll(".locality-link-group")
-    .append("use")
-    .attr("id", function(d) { return "rtt-" + d.id + "-path"; })
-    .attr("xlink:href", function(d) { return "#rtt-" + d.id; });
+  model.localityLinkSel = model.svg.selectAll(".locality-link-group")
+    .data(model.localityLinks, function(d) { return d.id; });
+  model.skin
+    .localityLink(model, model.localityLinkSel.enter().append("g")
+                  .attr("class", "locality-link-group")
+                  .attr("opacity", 0)
+                  .attr("id", function(d) { return d.id; }));
+  model.localityLinkSel.exit().remove();
 
   if (model.enablePlayAndReload) {
     model.controls.transition()

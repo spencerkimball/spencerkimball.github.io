@@ -165,6 +165,19 @@ Localities.prototype.localityLink = function(model, sel) {
     .attr("class", "rtt-label")
     .attr("startOffset", "60%")
     .attr("xlink:href", function(d) { return "#" + d.id + "-path"; })
+
+  sel.selectAll(".locality-link-group")
+    .append("use")
+    .attr("id", function(d) { return "incoming-" + d.id + "-path"; })
+    .attr("xlink:href", function(d) { return "#incoming-" + d.id; });
+  sel.selectAll(".locality-link-group")
+    .append("use")
+    .attr("id", function(d) { return "outgoing-" + d.id + "-path"; })
+    .attr("xlink:href", function(d) { return "#outgoing-" + d.id; });
+  sel.selectAll(".locality-link-group")
+    .append("use")
+    .attr("id", function(d) { return "rtt-" + d.id + "-path"; })
+    .attr("xlink:href", function(d) { return "#rtt-" + d.id; });
 }
 
 Localities.prototype.update = function(model, locSel, linkSel) {
