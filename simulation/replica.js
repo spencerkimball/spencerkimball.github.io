@@ -9,6 +9,7 @@ function Replica(size, range, roachNode, add, model) {
   this.model = model;
   this.splitting = false;
   this.splitEpoch = 0;
+  this.throughput = new ExpVar();
   this.stopped = true;
   if (add) {
     this.roachNode.replicas.push(this);
@@ -311,6 +312,7 @@ Replica.prototype.chooseRebalanceTarget = function() {
 Replica.prototype.add = function(req) {
   // Update the node once the data has been set.
   this.size += req.size();
+  this.throughput.record(req.size());
   this.range.table.record(req);
   if (req.originApp != null) {
     req.originApp.success();

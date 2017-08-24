@@ -238,15 +238,13 @@ function layoutProjection(model) {
 
       // Fade out geographic projection when approaching max scale.
       model.projectionG
-        .style("opacity", 1 - s / maxScale)
+        .style("opacity", 1 - s / maxScale);
 
       model.redraw();
     });
 
   // Enable this to pan and zoom manually.
-  /*model.svgParent
-    .attr("class", "projection")
-    .call(model.zoom);*/
+  model.svgParent.call(model.zoom);
 
   d3.select("body")
     .on("keydown", function() {
@@ -255,6 +253,9 @@ function layoutProjection(model) {
       }
     });
   model.projectionG = model.svgParent.append("g");
+  model.projectionG
+    .append("rect")
+    .attr("class", "projection");
 
   model.worldG = model.projectionG.append("g");
   d3.json("https://spencerkimball.github.io/simulation/world.json", function(error, collection) {
@@ -286,17 +287,17 @@ function removeModel(model) {
 
 var localityTable = [
   { head: "Name", cl: "left", html: function(d) { return d.name; } },
-  { head: "Usage", cl: "right", html: function(d) { return bytesToSize(d.usageBytes * d.model.unitSize); } },
+  { head: "Usage", cl: "right", html: function(d) { return bytesToSize(d.usageSize * d.model.unitSize); } },
   { head: "Capacity", cl: "right", html: function(d) { return bytesToSize(d.capacity() * d.model.unitSize); } },
-  { head: "Throughput", cl: "right", html: function(d) { return bytesToActivity(d.cachedTotalNetworkActivity); } },
-  { head: "Client&nbsp;traffic", cl: "right", html: function(d) { return bytesToActivity(d.cachedClientActivity); } }
+  { head: "Throughput", cl: "right", html: function(d) { return bytesToActivity(d.cachedTotalNetworkActivity * d.model.unitSize); } },
+  { head: "Client&nbsp;traffic", cl: "right", html: function(d) { return bytesToActivity(d.cachedClientActivity * d.model.unitSize); } }
 ];
 
 var databaseTable = [
   { head: "Name", cl: "left", html: function(d) { return d.name; } },
   { head: "Sites", cl: "left", html: function(d) { return d.sites(); } },
-  { head: "Usage", cl: "right", html: function(d) { return bytesToSize(d.usage()); } },
-  { head: "Throughput", cl: "right", html: function(d) { return bytesToActivity(d.throughput()); } },
+  { head: "Usage", cl: "right", html: function(d) { return bytesToSize(d.usage() * d.model.unitSize); } },
+  { head: "Throughput", cl: "right", html: function(d) { return bytesToActivity(d.throughput() * d.model.unitSize); } },
   { head: "Availability", cl: "right", html: function(d) { return "100%"; } }
 ];
 
@@ -347,6 +348,8 @@ function layoutModel(model) {
     .append("tr")
     .attr("id", function(d) { return d.id; })
     .style("cursor", "pointer")
+    .on("mouseover", function(d) { showLocalityLinks(model, d); })
+    .on("mouseout", function(d) { hideLocalityLinks(model, d); })
     .on("click", function(d) { zoomToLocality(model, 750, d.locality, true); })
   model.localityRowSel.selectAll("td")
     .data(function(locality) {
@@ -439,9 +442,9 @@ function layoutModel(model) {
       .attr("y1", function(d) { return d.source.y; })
       .attr("x2", function(d) { return d.target.x; })
       .attr("y2", function(d) { return d.target.y; });
-
-    refreshModel(model);
   }
+
+  refreshModel(model);
   model.redraw();
 }
 

@@ -65,6 +65,14 @@ Locality.prototype.usageByDB = function() {
   return usageMap;
 }
 
+Locality.prototype.throughputByDB = function() {
+  var throughputMap = {"__total": 0};
+  for (var i = 0; i < this.nodes.length; i++) {
+    this.nodes[i].throughputByDB(throughputMap);
+  }
+  return throughputMap;
+}
+
 Locality.prototype.capacity = function() {
   var capacity = 0;
   for (var i = 0; i < this.nodes.length; i++) {
@@ -124,8 +132,8 @@ Locality.prototype.getDatabasesByUsage = function() {
 Locality.prototype.refreshUsageDetails = function() {
   var capacity = this.capacity();
   this.usageMap = this.usageByDB();
-  this.usageBytes = this.usageMap["__total"];
-  this.usagePct = this.usageBytes / capacity;
+  this.usageSize = this.usageMap["__total"];
+  this.usagePct = this.usageSize / capacity;
   this.cachedCapacity = capacity;
   this.cachedClientActivity = this.clientActivity();
   this.cachedTotalNetworkActivity = this.totalNetworkActivity();

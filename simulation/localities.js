@@ -25,7 +25,7 @@ function bytesToSize(bytes) {
 
 function bytesToActivity(bytes) {
   var sizes = ['B/s', 'KiB/s', 'MiB/s', 'GiB/s', 'TiB/s'];
-  if (bytes == 0) return '0 B/s';
+  if (bytes < 1) return '0 B/s';
   var i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
   return Math.round(bytes * 10 / Math.pow(1024, i), 2) / 10 + ' ' + sizes[i];
 }
@@ -110,9 +110,7 @@ Localities.prototype.locality = function(model, sel) {
     .attr("d", function(d) { return createArcPath(innerR, outerR, arcAngleFromPct(0), arcAngleFromPct(1)); })
     .attr("class", "capacity-background");
   capacityG.append("text")
-    .attr("class", "capacity-label")
-    .attr("x", (outerR + arcWidth) * Math.cos(0))
-    .attr("text-anchor", "left");
+    .attr("class", "capacity-label");
 
   // Used capacity arc segments (one per database).
   var usedG = sel.append("g");
@@ -147,29 +145,16 @@ Localities.prototype.locality = function(model, sel) {
     .text("CAPACITY USED");
 
   // Client / network activity.
-  var labelX = outerR + arcWidth,
-      labelH = 8,
-      barsY = innerR * Math.sin(angleFromPct(0));
   var activityG = sel.append("g")
-      .attr("transform", "translate(" + 0 + ", " + barsY + ")");
+      .attr("transform", "translate(" + 0 + ", " + (innerR * Math.sin(angleFromPct(0))) + ")");
   activityG.append("line")
-    .attr("class", "client-activity")
-    .attr("x1", outerR - 2)
-    .attr("y1", -labelH)
-    .attr("y2", -labelH);
+    .attr("class", "client-activity");
   activityG.append("text")
-    .attr("class", "client-activity-label")
-    .attr("x", labelX)
-    .attr("y", -labelH);
+    .attr("class", "client-activity-label");
   activityG.append("line")
-    .attr("class", "network-activity")
-    .attr("x1", outerR - 2)
-    .attr("y1", 0)
-    .attr("y2", 0);
+    .attr("class", "network-activity");
   activityG.append("text")
-    .attr("class", "network-activity-label")
-    .attr("x", labelX)
-    .attr("y", 0);
+    .attr("class", "network-activity-label");
 
   // Locality label.
   var localityLabels = sel.append("g")
@@ -269,6 +254,7 @@ Localities.prototype.update = function(model) {
       linkSel = model.localityLinkSel;
 
   locSel.selectAll(".capacity-label")
+    .attr("x", (outerR + arcWidth) * Math.cos(0))
     .transition()
     .duration(250)
     .attr("opacity", function(d) { return (d.showDetail != null) ? 0 : 1; })
@@ -292,7 +278,7 @@ Localities.prototype.update = function(model) {
           endPct = 0,
           extraR = 0;
       if (d.locality.showDetail != null) {
-        endPct = startPct + usage / d.locality.usageBytes;
+        endPct = startPct + usage / d.locality.usageSize;
         extraR = arcWidth * 1.5;
       } else {
         endPct = startPct + usage / d.locality.cachedCapacity;
@@ -331,23 +317,35 @@ Localities.prototype.update = function(model) {
         return (d.angleInterp(t) < 0.75) ? "end" : "start";
       }
     })
-    .text(function(d) { return bytesToSize(d.usageBytes * model.unitSize); });
+    .text(function(d) { return bytesToSize(d.usageSize * model.unitSize); });
   locSel.selectAll(".capacity-used-pct-label")
     .text(function(d) { return Math.round(100 * d.usagePct) + "%"; });
 
   var barsX = innerR * Math.cos(angleFromPct(0)),
-      barsWidth = outerR - barsX - 4;
+      barsWidth = outerR - barsX - 4,
+      labelX = outerR + arcWidth,
+      labelH = 8;
   locSel.selectAll(".client-activity")
     .transition()
     .duration(250)
-    .attr("x2", function(d) { return Math.round(outerR - barsWidth * (d.cachedClientActivity / model.maxClientActivity)); });
+    .attr("x1", outerR - 2)
+    .attr("y1", -labelH)
+    .attr("x2", function(d) { return Math.round(outerR - barsWidth * (d.cachedClientActivity / model.maxClientActivity)); })
+    .attr("y2", -labelH);
   locSel.selectAll(".client-activity-label")
+    .attr("x", labelX)
+    .attr("y", -labelH)
     .text(function(d) { return bytesToActivity(d.cachedClientActivity); });
   locSel.selectAll(".network-activity")
     .transition()
     .duration(250)
-    .attr("x2", function(d) { return Math.round(outerR - barsWidth * (d.cachedTotalNetworkActivity / model.maxNetworkActivity)); });
+    .attr("x1", outerR - 2)
+    .attr("y1", 0)
+    .attr("x2", function(d) { return Math.round(outerR - barsWidth * (d.cachedTotalNetworkActivity / model.maxNetworkActivity)); })
+    .attr("y2", 0);
   locSel.selectAll(".network-activity-label")
+    .attr("x", labelX)
+    .attr("y", 0)
     .text(function(d) { return bytesToActivity(d.cachedTotalNetworkActivity); });
 
   linkSel.selectAll(".incoming-throughput-label")

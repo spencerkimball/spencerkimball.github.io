@@ -35,16 +35,22 @@ Database.prototype.sites = function() {
 
 Database.prototype.usage = function() {
   var usage = 0;
-  for (var i = 0; i < this.tables.length; i++) {
-    usage += this.tables[i].usage();
+  for (var i = 0; i < this.model.localities.length; i++) {
+    var dbUsage = this.model.localities[i].usageByDB();
+    if (this.name in dbUsage) {
+      usage += dbUsage[this.name];
+    }
   }
   return usage;
 }
 
 Database.prototype.throughput = function() {
   var throughput = 0;
-  for (var i = 0; i < this.tables.length; i++) {
-    throughput += this.tables[i].getThroughput();
+  for (var i = 0; i < this.model.localities.length; i++) {
+    var throughputMap = this.model.localities[i].throughputByDB();
+    if (this.name in throughputMap) {
+      throughput += throughputMap[this.name];
+    }
   }
   return throughput;
 }

@@ -71,7 +71,7 @@ RoachNode.prototype.nonSplitting = function() {
 
 // Returns whether the node has space.
 RoachNode.prototype.hasSpace = function(size, countLog) {
-  return this.usage(countLog) + size <= this.capacity
+  return this.usage(countLog) + size <= this.capacity;
 }
 
 RoachNode.prototype.setBusy = function(busy) {
@@ -106,6 +106,21 @@ RoachNode.prototype.usageByDB = function(usageMap) {
         usageMap[db] = size;
       }
       usageMap["__total"] += size;
+    }
+  }
+}
+
+RoachNode.prototype.throughputByDB = function(throughputMap) {
+  for (var i = 0; i < this.replicas.length; i++) {
+    if (this.replicas[i].range != null) {
+      var throughput = this.replicas[i].throughput.getValue(),
+          db = this.replicas[i].range.table.db.name;
+      if (db in throughputMap) {
+        throughputMap[db] += throughput;
+      } else {
+        throughputMap[db] = throughput;
+      }
+      throughputMap["__total"] += throughput;
     }
   }
 }
