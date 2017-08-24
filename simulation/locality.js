@@ -7,9 +7,13 @@ function Locality(locality, nodes, model) {
   this.clazz = "locality";
   this.model = model;
   this.location = this.findCentroid();
+  this.showDetail = null;
   this.cachedTotalNetworkActivity = 0;
   this.cachedClientActivity = 0;
   this.model.addLocality(this);
+  var that = this;
+  this.angleInterp = function(t) { return that.usagePct; }
+  this.refreshUsageDetails();
 }
 
 Locality.prototype.findCentroid = function() {
@@ -45,12 +49,20 @@ Locality.prototype.leaderCount = function() {
   return count;
 }
 
-Locality.prototype.usage = function() {
-  var usage = 0;
+Locality.prototype.usageByTable = function() {
+  var usageMap = {"__total": 0};
   for (var i = 0; i < this.nodes.length; i++) {
-    usage += this.nodes[i].usage();
+    this.nodes[i].usageByTable(usageMap);
   }
-  return usage;
+  return usageMap;
+}
+
+Locality.prototype.usageByDB = function() {
+  var usageMap = {"__total": 0};
+  for (var i = 0; i < this.nodes.length; i++) {
+    this.nodes[i].usageByDB(usageMap);
+  }
+  return usageMap;
 }
 
 Locality.prototype.capacity = function() {
@@ -83,6 +95,40 @@ Locality.prototype.totalNetworkActivity = function() {
     this.model.maxNetworkActivity = activity;
   }
   return activity;
+}
+
+// getDatabasesByUsage returns an array of objects containing database
+// name and locality for each database which has non-zero usage by this
+// locality, sorted by database index.
+Locality.prototype.getDatabasesByUsage = function() {
+  var databases = [];
+  for (db in this.usageMap) {
+    if (db != "__total") {
+      databases.push({name: db, locality: this});
+    }
+  }
+  if (databases.length == 0) {
+    return [];
+  }
+  var model = this.model;
+  databases.sort(function(a, b) {
+    return model.databasesByName[a.name].idx - model.databasesByName[b.name].idx;
+  });
+  for (var i = 1; i < databases.length; i++) {
+    databases[i].prev = databases[i-1];
+  }
+  databases[databases.length - 1].last = true;
+  return databases;
+}
+
+Locality.prototype.refreshUsageDetails = function() {
+  var capacity = this.capacity();
+  this.usageMap = this.usageByDB();
+  this.usageBytes = this.usageMap["__total"];
+  this.usagePct = this.usageBytes / capacity;
+  this.cachedCapacity = capacity;
+  this.cachedClientActivity = this.clientActivity();
+  this.cachedTotalNetworkActivity = this.totalNetworkActivity();
 }
 
 // localityName extracts the locality name as the first element of the

@@ -62,7 +62,7 @@ Replica.prototype.setTimeout = function(timeout) {
 }
 
 Replica.prototype.replicate = function() {
-  if (this.roachNode.busy || !this.isLeader() || this.range.replicas.length == this.range.zoneConfig.length) return;
+  if (this.roachNode.busy || !this.isLeader() || this.range.replicas.length == this.range.table.zoneConfig.length) return;
   // Choose target and create new replica.
   var that = this;
   var targetNode = this.chooseReplicateTarget();
@@ -176,8 +176,8 @@ Replica.prototype.chooseExisting = function(filterFn, scoreFn) {
 // findFirstMissingZone finds the first zone in this range's zone config
 // for which there is no replica which matches the constraints.
 Replica.prototype.findFirstMissingZone = function() {
-  for (var z = 0; z < this.range.zoneConfig.length; z++) {
-    var zone = this.range.zoneConfig[z];
+  for (var z = 0; z < this.range.table.zoneConfig.length; z++) {
+    var zone = this.range.table.zoneConfig[z];
     var found = false; // did we find a replica matching the constraints of this zone?
     for (var i = 0; i < this.range.replicas.length && !found; i++) {
       var node = this.range.replicas[i].roachNode;
@@ -205,21 +205,25 @@ Replica.prototype.findFirstMissingZone = function() {
 // zones match, returns the first. If no zones match, returns null.
 Replica.prototype.findMatchingZone = function() {
   var node = this.roachNode;
-  for (var z = 0; z < this.range.zoneConfig.length; z++) {
-    var zone = this.range.zoneConfig[z];
-    var matches = true; // does this replica match all constraints on the zone config?
-    for (var j = 0; j < zone.length && matches; j++) {
-      for (var k = 0; k < node.locality.length; k++) {
-        if (zone[j] != node.locality[k]) {
-          matches = false;
-          break;
+  for (var z = 0; z < this.range.table.zoneConfig.length; z++) {
+    var zone = this.range.table.zoneConfig[z];
+    var allMatch = true; // does this replica match all constraints on the zone config?
+    for (var j = 0; j < zone.length && allMatch; j++) {
+      var matches = false;
+      for (var k = 0; k < node.locality.length && !matches; k++) {
+        if (zone[j] == node.locality[k]) {
+          matches = true;
         }
       }
+      if (!matches) {
+        allMatch = false;
+      }
     }
-    if (matches) {
+    if (allMatch) {
       return zone;
     }
   }
+  console.log("could not find a matching zone for " + this.roachNode.locality + " in " + this.range.table.zoneConfig);
   return null;
 }
 
@@ -267,7 +271,7 @@ Replica.prototype.chooseRebalanceTarget = function() {
   var filterFn = function(n) { return n.hasSpace(that.size, true /* count log */); };
   var scoreFn = function(nA, nB) { return nA.nonSplitting() < nB.nonSplitting(); };
 
-  // Create a set of existing replica IDs for this range.
+  // Create a set of existing replica's nodeIDs for this range.
   var repExist = {};
   for (var i = 0; i < this.range.replicas.length; i++) {
     repExist[this.range.replicas[i].roachNode.id] = true;
@@ -307,6 +311,7 @@ Replica.prototype.chooseRebalanceTarget = function() {
 Replica.prototype.add = function(req) {
   // Update the node once the data has been set.
   this.size += req.size();
+  this.range.table.record(req);
   if (req.originApp != null) {
     req.originApp.success();
   }

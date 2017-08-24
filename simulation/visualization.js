@@ -135,7 +135,7 @@ function findScale(b1, b2, factor) {
   return factor / (b2 - b1) / 1.2;
 }
 
-function zoomToLocality(model, duration, locality) {
+function zoomToLocality(model, duration, locality, updateHistory) {
   model.setLocality(locality);
 
   // Add label.
@@ -184,28 +184,10 @@ function zoomToLocality(model, duration, locality) {
           .translate([model.width / 2 - p[0], model.height / 2 - p[1]])
           .scale(scale)
           .event);
-}
 
-function showLocalityLinks(model, locality) {
-  model.svg.selectAll(".locality-link-group")
-    .transition()
-    .duration(250)
-    .attr("opacity", function(d) { return (d.l1 == locality || d.l2 == locality) ? 1 : 0; });
-  model.svg.selectAll(".expand-label")
-    .transition()
-    .duration(250)
-    .attr("opacity", function(d) { return (d == locality) ? 1 : 0; });
-}
-
-function hideLocalityLinks(model, locality) {
-  model.svg.selectAll(".locality-link-group")
-    .transition()
-    .duration(250)
-    .attr("opacity", 0);
-  model.svg.selectAll(".expand-label")
-    .transition()
-    .duration(250)
-    .attr("opacity", 0);
+  if (updateHistory) {
+    history.pushState({modelID: model.id, locality: model.currentLocality.slice(0)}, "");
+  }
 }
 
 function layoutProjection(model) {
@@ -295,12 +277,28 @@ function layoutProjection(model) {
   });
 
   model.projection.scale(model.maxScale);
-  zoomToLocality(model, 0, []);
+  zoomToLocality(model, 0, [], false);
 }
 
 function removeModel(model) {
   d3.select("#" + model.id).select(".model-container").remove();
 }
+
+var localityTable = [
+  { head: "Name", cl: "left", html: function(d) { return d.name; } },
+  { head: "Usage", cl: "right", html: function(d) { return bytesToSize(d.usageBytes * d.model.unitSize); } },
+  { head: "Capacity", cl: "right", html: function(d) { return bytesToSize(d.capacity() * d.model.unitSize); } },
+  { head: "Throughput", cl: "right", html: function(d) { return bytesToActivity(d.cachedTotalNetworkActivity); } },
+  { head: "Client&nbsp;traffic", cl: "right", html: function(d) { return bytesToActivity(d.cachedClientActivity); } }
+];
+
+var databaseTable = [
+  { head: "Name", cl: "left", html: function(d) { return d.name; } },
+  { head: "Sites", cl: "left", html: function(d) { return d.sites(); } },
+  { head: "Usage", cl: "right", html: function(d) { return bytesToSize(d.usage()); } },
+  { head: "Throughput", cl: "right", html: function(d) { return bytesToActivity(d.throughput()); } },
+  { head: "Availability", cl: "right", html: function(d) { return "100%"; } }
+];
 
 function layoutModel(model) {
   if (model.svg == null) return;
@@ -321,11 +319,8 @@ function layoutModel(model) {
               .attr("class", "locality")
               .on("click", function(d) {
                 hideLocalityLinks(model, d);
-                zoomToLocality(model, 750, d.locality);
-                history.pushState({modelID: model.id, locality: model.currentLocality.slice(0)}, "");
-              })
-              .on("mouseover", function(d) { showLocalityLinks(model, d); })
-              .on("mouseout", function(d) { hideLocalityLinks(model, d); }));
+                zoomToLocality(model, 750, d.locality, true);
+              }));
   model.localitySel.exit()
     .transition()
     .duration(250)
@@ -333,6 +328,68 @@ function layoutModel(model) {
     .style("stroke-opacity", 0)
     .remove();
   model.localitySel.style("fill-opacity", 0)
+    .style("stroke-opacity", 0)
+    .transition()
+    .duration(750)
+    .style("fill-opacity", 1)
+    .style("stroke-opacity", 1);
+
+  var table = d3.select("#localities");
+  table.select("thead").select("tr").selectAll("th")
+    .data(localityTable)
+    .enter()
+    .append("th")
+    .attr("class", function(d) { return d.cl; })
+    .html(function(d) { return d.head; });
+  model.localityRowSel = table.select("tbody").selectAll("tr")
+    .data(model.localities, function(d) { return d.id; });
+  model.localityRowSel.enter()
+    .append("tr")
+    .attr("id", function(d) { return d.id; })
+    .style("cursor", "pointer")
+    .on("click", function(d) { zoomToLocality(model, 750, d.locality, true); })
+  model.localityRowSel.selectAll("td")
+    .data(function(locality) {
+      return localityTable.map(function(column) {
+        return {column: column, locality: locality};
+      });
+    })
+    .enter()
+    .append("td")
+    .attr("class", function(d) { return d.column.cl; });
+  model.localityRowSel.exit().remove();
+  model.localityRowSel.style("fill-opacity", 0)
+    .style("stroke-opacity", 0)
+    .transition()
+    .duration(750)
+    .style("fill-opacity", 1)
+    .style("stroke-opacity", 1);
+
+  table = d3.select("#databases");
+  table.select("thead").select("tr").selectAll("th")
+    .data(databaseTable)
+    .enter()
+    .append("th")
+    .attr("class", function(d) { return d.cl; })
+    .html(function(d) { return d.head; });
+  model.databaseRowSel = table.select("tbody").selectAll("tr")
+    .data(model.databases, function(d) { return d.id; });
+  model.databaseRowSel.enter()
+    .append("tr")
+    .attr("id", function(d) { return d.id; })
+    .on("mouseover", function(d) { showUsageDetail(model, null, d); })
+    .on("mouseout", function(d) { hideUsageDetail(model, null); });
+  model.databaseRowSel.selectAll("td")
+    .data(function(db) {
+      return databaseTable.map(function(column) {
+        return {column: column, db: db};
+      });
+    })
+    .enter()
+    .append("td")
+    .attr("class", function(d) { return d.column.cl; });
+  model.databaseRowSel.exit().remove();
+  model.databaseRowSel.style("fill-opacity", 0)
     .style("stroke-opacity", 0)
     .transition()
     .duration(750)
@@ -390,7 +447,14 @@ function layoutModel(model) {
 
 function refreshModel(model) {
   if (model.svg == null) return;
-  model.skin.update(model, model.localitySel, model.localityLinkSel);
+
+  model.skin.update(model);
+
+  model.localityRowSel.selectAll("td")
+    .html(function(d) { return d.column.html(d.locality); });
+
+  model.databaseRowSel.selectAll("td")
+    .html(function(d) { return d.column.html(d.db); });
 }
 
 function setNodeHealthy(model, n) {

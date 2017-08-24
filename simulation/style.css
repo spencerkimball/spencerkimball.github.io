@@ -1,3 +1,12 @@
+html {
+    height: 100%;
+}
+
+body {
+    height: 100%;
+    font-family: 'Lato', sans-serif;
+}
+
 .controlscreen {
     position: absolute;
     left: 0px;
@@ -12,7 +21,6 @@
 
 .heading {
     font-size: 48px;
-    font-family: 'Lato', sans-serif;
     font-weight: bold
 }
 
@@ -34,7 +42,6 @@
     position: absolute;
     top: 0px;
     left: 0;
-    font-family: 'Lato', sans-serif;
 }
 
 .btn-addnode {
@@ -95,7 +102,19 @@
 
 .capacity-used {
     fill: #51bbfd;
+    stroke: #daeefa;
+    stroke-width: 0.25px;
+}
+
+.capacity-used.detail {
+    fill: #daeefa;
+    stroke-width: 0.5px;
     stroke: #51bbfd;
+}
+
+.capacity-used.detail.highlight {
+    fill: #51bbfd;
+    stroke: #daeefa;
 }
 
 .capacity-label {
@@ -223,4 +242,72 @@
     fill: #f7f7ff;
     stroke: #ccc;
     stroke-width: .5px;
+}
+
+.box {
+    display: flex;
+    flex-flow: column;
+    height: 100%;
+}
+
+.box .model {
+    flex: 0 1 auto;
+}
+
+.box .details {
+    position: relative;
+    flex: 1 1 auto;
+    overflow: scroll;
+    font-size: 12pt;
+    min-height: 240px;
+}
+
+.box .details h2 {
+    color: #152849;
+    font-size: 16pt;
+    font-weight: bold;
+    text-align: center;
+    border-bottom: 2px solid #152849;
+}
+
+.box .details table {
+    width: 100%;
+    border-spacing: 0px;
+}
+
+.box .details tbody tr:hover {
+    color: #5abbfd;
+}
+
+.box .details th {
+    font-size: 10pt;
+    font-weight: bold;
+    text-decoration: underline;
+}
+
+.box .details .left {
+    text-align: left;
+}
+
+.box .details .right {
+    text-align: right;
+}
+
+.box .details td {
+    font-size: 10pt;
+    font-weight: normal;
+    vertical-align: top;
+    padding: 3px 0px 3px 0px;
+}
+
+.localities {
+    position: absolute;
+    left: 2%;
+    width: 36%;
+}
+
+.databases {
+    position: absolute;
+    left: 42%;
+    width: 56%;
 }

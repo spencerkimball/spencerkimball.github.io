@@ -9,7 +9,6 @@ function Range(table, model) {
   this.nextSplitEpoch = 0;
   this.heartbeating = false;
   this.stopped = true;
-  this.zoneConfig = model.defaultZoneConfig;
   this.table = table;
   this.table.ranges.push(this);
   this.model = model;

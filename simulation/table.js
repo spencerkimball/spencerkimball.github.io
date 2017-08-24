@@ -6,11 +6,15 @@
 // constraints for each desired replica, expressed as localities. For
 // example:
 // ["region=us", "city=San Francisco", "rack=1a"]
-function Table(name, zoneConfig, size, model) {
+function Table(name, zoneConfig, size, db, model) {
   this.name = name;
   this.zoneConfig = zoneConfig;
   this.color = color(model.tables.length);
   this.ranges = [];
+  this.throughput = 0;
+  this.lastTime = 0;
+  this.totalBytes = 0;
+  this.db = db;
   this.model = model;
 
   var rangeSize = model.splitSize / 2;
@@ -31,6 +35,7 @@ function Table(name, zoneConfig, size, model) {
     }
   }
 
+  this.db.addTable(this);
   this.model.addTable(this);
 }
 
@@ -52,4 +57,23 @@ Table.prototype.flush = function() {
   }
 }
 
+Table.prototype.usage = function() {
+  return this.totalBytes;
+}
 
+Table.prototype.record = function(req) {
+  var time = Date.now(),
+      deltaTime = (time - this.lastTime) / 1000.0,
+      bytes = req.size() * this.model.unitSize;
+  this.totalBytes += bytes;
+  this.throughput = this.throughput * Math.exp(-deltaTime / 10) + bytes;
+  this.lastTime = time;
+}
+
+// getThroughput calculates an exponential window function, with half
+// life set to 10s. The value returned here is in bytes / s.
+Table.prototype.getThroughput = function() {
+  var time = Date.now(),
+      deltaTime = (time - this.lastTime) / 1000.0;
+  return (this.throughput * Math.exp(-deltaTime / 10)) / 10;
+}

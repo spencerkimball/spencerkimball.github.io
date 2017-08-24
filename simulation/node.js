@@ -24,31 +24,6 @@ function RoachNode(name, location, locality, model) {
   this.model.addNode(this);
 }
 
-RoachNode.prototype.clicked = function() {
-  if (this.state == "unreachable") {
-    this.state = "healthy";
-    this.model.setNodeHealthy(this);
-  } else if (this.state == "healthy") {
-    this.state = "unreachable";
-    var that = this;
-    this.model.setNodeUnreachable(this, function() {
-      this.state = "dead";
-      for (var i = 0; i < this.replicas.length; i++) {
-        var r = this.replicas[i];
-        r.stop();
-        var index = r.range.replicas.indexOf(r);
-        if (index != -1) {
-          r.range.replicas.splice(index, 1);
-          console.log("with " + this.id + " dead, removing " + r.id + " from " + r.range.id);
-        }
-      }
-      this.replicas = [];
-      this.model.removeNode(this);
-    })
-  }
-  console.log(this.id + " moved to state " + this.state);
-}
-
 RoachNode.prototype.down = function() {
   return this.state != "healthy";
 }
@@ -101,6 +76,38 @@ RoachNode.prototype.hasSpace = function(size, countLog) {
 
 RoachNode.prototype.setBusy = function(busy) {
   this.busy = busy
+}
+
+// usageByTable adds the replica size counts (including Raft log) to
+// the supplied usageMap, with an additional entry for total.
+RoachNode.prototype.usageByTable = function(usageMap) {
+  for (var i = 0; i < this.replicas.length; i++) {
+    if (this.replicas[i].range != null) {
+      var size = this.replicas[i].getSize(true),
+          table = this.replicas[i].range.table.name;
+      if (table in usageMap) {
+        usageMap[table] += size;
+      } else {
+        usageMap[table] = size;
+      }
+      usageMap["__total"] += size;
+    }
+  }
+}
+
+RoachNode.prototype.usageByDB = function(usageMap) {
+  for (var i = 0; i < this.replicas.length; i++) {
+    if (this.replicas[i].range != null) {
+      var size = this.replicas[i].getSize(true),
+          db = this.replicas[i].range.table.db.name;
+      if (db in usageMap) {
+        usageMap[db] += size;
+      } else {
+        usageMap[db] = size;
+      }
+      usageMap["__total"] += size;
+    }
+  }
 }
 
 RoachNode.prototype.clientActivity = function() {

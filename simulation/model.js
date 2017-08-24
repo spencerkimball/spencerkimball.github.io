@@ -9,10 +9,10 @@ function Model(id, width, height, initFn) {
   this.width = width;
   this.height = height;
   this.initFn = initFn;
-  this.nodeRadius = 40;
+  this.nodeRadius = 36;
   this.appRadius = 0;
   this.interNodeDistance = 25;
-  this.nodeCapacity = 5000.0;
+  this.nodeCapacity = 50.0;
   this.reqSize = 0.1;
   this.splitSize = 1.0;
   this.unitSize = 64<<20;
@@ -23,6 +23,9 @@ function Model(id, width, height, initFn) {
   this.periodicInterval = 1000;  // in ms
   this.roachNodes = [];
   this.tables = [];
+  this.databases = [];
+  this.databasesByName = {};
+  this.databaseCount = 0;
   this.apps = [];
   this.reqCount = 0;
   this.rangeCount = 0;
@@ -101,6 +104,9 @@ Model.prototype.addLocality = function(locality) {
 // constraints specified in the supplied zone constraints array.
 Model.prototype.findMatchingNodes = function(zone) {
   var nodes = [];
+  if (zone == null) {
+    return nodes;
+  }
   for (var i = 0; i < this.roachNodes.length; i++) {
     var node = this.roachNodes[i];
     var matches = true; // does this replica match all constraints on the zone config?
@@ -171,6 +177,12 @@ Model.prototype.removeNode = function(node) {
 
 Model.prototype.addTable = function(table) {
   this.tables.push(table);
+}
+
+Model.prototype.addDatabase = function(db) {
+  this.databases.push(db);
+  // For ordering databases by index when we only have access to the name.
+  this.databasesByName[db.name] = db;
 }
 
 // Note that we've disabled visualization of apps. They now send
@@ -401,7 +413,7 @@ function findClosestPoint(s, e, p) {
 // in order to avoid intersection. The bending is straightforward and
 // will by no means avoid intersections entirely.
 Model.prototype.computeLocalityLinkPaths = function() {
-  var maxR = this.nodeRadius * this.localityScale;
+  var maxR = this.nodeRadius * 1.11111 * this.localityScale;
   for (var i = 0; i < this.localityLinks.length; i++) {
     var link = this.localityLinks[i];
     // Make sure the link goes from left to right.
@@ -451,12 +463,7 @@ Model.prototype.layout = function() {
 
 Model.prototype.refreshLayout = function() {
   for (var i = 0; i < this.localities.length; i++) {
-    var l = this.localities[i],
-        capacity = l.capacity();
-    l.usageBytes = l.usage();
-    l.usagePct = l.usageBytes / capacity;
-    l.cachedClientActivity = l.clientActivity();
-    l.cachedTotalNetworkActivity = l.totalNetworkActivity();
+    this.localities[i].refreshUsageDetails();
   }
   for (var i = 0; i < this.localityLinks.length; i++) {
     var ll = this.localityLinks[i];
