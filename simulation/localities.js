@@ -114,15 +114,22 @@ Localities.prototype.locality = function(model, sel) {
 
   // Used capacity arc segments (one per database).
   var usedG = sel.append("g");
-  var arcSel = usedG.selectAll("path")
-      .data(function(d) { return d.getDatabasesByUsage(); });
-  arcSel.enter()
-    .append("path")
-    .attr("class", "capacity-used")
-    .attr("id", function(d) { return d.name; });
-  arcSel.exit().remove();
   usedG.append("text")
     .attr("class", "capacity-used-label");
+  var arcSel = usedG.selectAll("path")
+      .data(function(d) { return d.getDatabasesByUsage(); });
+  arcSel.enter().append("g")
+  arcSel.append("path")
+    .attr("class", "capacity-used");
+  arcSel.exit().remove();
+  var labelG = arcSel.append("g")
+      .attr("class", "arc-label")
+  labelG.append("polyline")
+    .attr("class", "guide");
+  labelG.append("text")
+    .attr("class", "name");
+  labelG.append("text")
+    .attr("class", "size");
 
   // Capacity labels.
   var capacityLabels = sel.append("g")
@@ -133,15 +140,11 @@ Localities.prototype.locality = function(model, sel) {
   capacityLabelsSVG.append("text")
     .attr("class", "capacity-used-pct-label")
     .attr("x", "50%")
-    .attr("y", "40%")
-    .attr("alignment-baseline", "middle")
-    .attr("text-anchor", "middle");
+    .attr("y", "40%");
   capacityLabelsSVG.append("text")
     .attr("class", "capacity-used-text")
     .attr("x", "50%")
     .attr("y", "60%")
-    .attr("alignment-baseline", "middle")
-    .attr("text-anchor", "middle")
     .text("CAPACITY USED");
 
   // Client / network activity.
@@ -273,7 +276,7 @@ Localities.prototype.update = function(model) {
       }
     })
     .attrTween("d", function(d) {
-      var usage = d.locality.usageMap[d.name],
+      var usage = (d.name in d.locality.usageMap) ? d.locality.usageMap[d.name] : 0,
           startPct = (d.prev != null) ? d.prev.endPct : 0,
           endPct = 0,
           extraR = 0;
@@ -283,33 +286,76 @@ Localities.prototype.update = function(model) {
       } else {
         endPct = startPct + usage / d.locality.cachedCapacity;
       }
-      var extraRI = d3.interpolate(d.extraR, extraR),
-          startI = d3.interpolate(d.startPct, startPct),
-          endI = d3.interpolate(d.endPct, endPct);
+      var midAngle = angleFromPct((startPct + endPct) / 2),
+          extraRI = d3.interpolate(d.extraR, extraR);
+      d.startI = d3.interpolate(d.startPct, startPct),
+      d.endI = d3.interpolate(d.endPct, endPct);
       d.extraR = extraR;
       d.startPct = startPct;
       d.endPct = endPct;
+      if (midAngle < -Math.PI) {
+        d.textOff = [-16, 8];
+      } else if (midAngle < -0.75 * Math.PI) {
+        d.textOff = [0, -8];
+      } else if (midAngle > -0.25 * Math.PI) {
+        d.textOff = [8, -8];
+      } else {
+        d.textOff = [0, -8];
+      }
       if (d.last != null) {
-        d.locality.angleInterp = endI;
+        d.locality.angleInterp = d.endI;
       }
       return function(t) {
         d.extraR = extraRI(t);
-        d.startPct = startI(t);
-        d.endPct = endI(t);
+        d.startPct = d.startI(t);
+        d.endPct = d.endI(t);
         return createArcPath(innerR, outerR + d.extraR, arcAngleFromPct(d.startPct), arcAngleFromPct(d.endPct));
       }
     });
+
+  locSel.selectAll(".arc-label")
+    .attr("opacity", function(d) {
+      return (d.locality.showDetail != null && d.name in d.locality.showDetail) ? 1.0 : 0.0;
+    })
+    .attr("visibility", function(d) {
+      return (d.locality.showDetail != null && d.name in d.locality.showDetail) ? "visible" : "hidden";
+    });
+  locSel.selectAll(".arc-label .guide")
+    .transition()
+    .duration(250)
+    .attrTween("points", function(d) {
+      return function(t) {
+        var midPct = (d.startI(t) + d.endI(t)) / 2,
+            angle = angleFromPct(midPct),
+            norm = [Math.cos(angle), Math.sin(angle)],
+            start = mult(norm, outerR + arcWidth * 1.5),
+            end = mult(norm, outerR + arcWidth * 5.5);
+        d.textPos = end;
+        return [start, end];
+      }
+    });
+  locSel.selectAll(".arc-label text")
+    .transition()
+    .duration(250)
+    .attrTween("transform", function(d) {
+      return function(t) {
+        return "translate(" + (d.textPos[0] + d.textOff[0]) + ", " + (d.textPos[1] + d.textOff[1]) + ")";
+      }
+    });
+  locSel.selectAll(".arc-label .name")
+    .text(function(d) { return d.name; })
+  locSel.selectAll(".arc-label .size")
+    .attr("y", "1em")
+    .text(function(d) { return bytesToSize(d.locality.usageMap[d.name] * model.unitSize); })
   locSel.selectAll(".capacity-used-label")
     .transition()
     .duration(250)
-    .attrTween("x", function(d) {
+    .attrTween("transform", function(d) {
       return function(t) {
-        return (outerR + arcWidth * (d.showDetail != null ? 2.5 : 1)) * Math.cos(angleFromPct(d.angleInterp(t)));
-      }
-    })
-    .attrTween("y", function(d) {
-      return function(t) {
-        return (outerR + arcWidth * (d.showDetail != null ? 2.5 : 1)) * Math.sin(angleFromPct(d.angleInterp(t)));
+        var x = Math.cos(angleFromPct(d.angleInterp(t))),
+            y = Math.sin(angleFromPct(d.angleInterp(t))),
+            radius = (outerR + arcWidth * (d.showDetail != null ? 2.5 : 1));
+        return "translate(" + (x * radius) + "," + (y * radius) + ")";
       }
     })
     .attrTween("text-anchor", function(d) {
@@ -335,7 +381,7 @@ Localities.prototype.update = function(model) {
   locSel.selectAll(".client-activity-label")
     .attr("x", labelX)
     .attr("y", -labelH)
-    .text(function(d) { return bytesToActivity(d.cachedClientActivity); });
+    .text(function(d) { return bytesToActivity(d.cachedClientActivity * model.unitSize); });
   locSel.selectAll(".network-activity")
     .transition()
     .duration(250)
@@ -346,12 +392,12 @@ Localities.prototype.update = function(model) {
   locSel.selectAll(".network-activity-label")
     .attr("x", labelX)
     .attr("y", 0)
-    .text(function(d) { return bytesToActivity(d.cachedTotalNetworkActivity); });
+    .text(function(d) { return bytesToActivity(d.cachedTotalNetworkActivity * model.unitSize); });
 
   linkSel.selectAll(".incoming-throughput-label")
-    .text(function(d) { return "←" + bytesToActivity(d.cachedNetworkActivity[1]); });
+    .text(function(d) { return "←" + bytesToActivity(d.cachedNetworkActivity[1] * model.unitSize); });
   linkSel.selectAll(".outgoing-throughput-label")
-    .text(function(d) { return bytesToActivity(d.cachedNetworkActivity[0]) + "→"; });
+    .text(function(d) { return bytesToActivity(d.cachedNetworkActivity[0] * model.unitSize) + "→"; });
   linkSel.selectAll(".rtt-label")
     .text(function(d) { return latencyMilliseconds(d.cachedNetworkActivity[2]); });
 }

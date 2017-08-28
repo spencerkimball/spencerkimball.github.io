@@ -112,7 +112,7 @@ Locality.prototype.getDatabasesByUsage = function() {
   var databases = [];
   for (db in this.usageMap) {
     if (db != "__total") {
-      databases.push({name: db, locality: this});
+      databases.push({name: db, locality: this, textPos: [0, 0], textOff: [0, 0]});
     }
   }
   if (databases.length == 0) {

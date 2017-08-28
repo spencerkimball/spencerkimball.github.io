@@ -66,42 +66,35 @@ function initModel(model) {
     {
       name: "New York City",
       location: [-74.0059, 40.7128],
-      locality: ["region=United States", "availzone=East Coast", "city=New York City"],
+      locality: ["region=United States", "city=New York City"],
       racks: 1,
       nodes_per_rack: 8,
     },
     {
       name: "Miami",
       location: [-80.1918, 25.7617],
-      locality: ["region=United States", "availzone=East Coast", "city=Miami"],
+      locality: ["region=United States", "city=Miami"],
       racks: 1,
       nodes_per_rack: 8,
     },
     {
       name: "Des Moines",
       location: [-93.6091, 41.6005],
-      locality: ["region=United States", "availzone=Central", "city=Des Moines"],
-      racks: 1,
-      nodes_per_rack: 8,
-    },
-    {
-      name: "Dallas",
-      location: [-96.7970, 32.7767],
-      locality: ["region=United States", "availzone=Central", "city=Dallas"],
+      locality: ["region=United States", "city=Des Moines"],
       racks: 1,
       nodes_per_rack: 8,
     },
     {
       name: "Mountain View",
       location: [-122.0839, 37.3861],
-      locality: ["region=United States", "availzone=West Coast", "city=Mountain View"],
+      locality: ["region=United States", "city=Mountain View"],
       racks: 1,
       nodes_per_rack: 8,
     },
     {
       name: "Seattle",
       location: [-122.3321, 47.6062],
-      locality: ["region=United States", "availzone=West Coast", "city=Seattle"],
+      locality: ["region=United States", "city=Seattle"],
       racks: 1,
       nodes_per_rack: 8,
     },
@@ -217,7 +210,7 @@ function initModel(model) {
   }
 
   // App1 lives across united states and has three tables.
-  var usSpanningConfig = [["availzone=East Coast"], ["availzone=Central"], ["availzone=West Coast"]];
+  var usSpanningConfig = [["city=Seattle"], ["city=Mountain View"], ["city=Des Moines"], ["city=Miami"], ["city=New York City"]];
   var usSalesDB = new Database("US Sales", model);
   var app1T1 = new Table("app1.customer", usSpanningConfig, model.splitSize * 1, usSalesDB, model);
   var app1T2 = new Table("app1.item", usSpanningConfig, model.splitSize * 2, usSalesDB, model);
