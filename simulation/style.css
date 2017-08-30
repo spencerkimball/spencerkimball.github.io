@@ -101,6 +101,29 @@ body {
     font-weight: bold;
 }
 
+.status-ring {
+    fill: none;
+    stroke-width: 2px;
+}
+
+.status-ring.available {
+    opacity: 0;
+    visibility: hidden;
+    stroke: #82cc00;
+}
+
+.status-ring.mixed {
+    opacity: 0.2;
+    visibility: visible;
+    stroke: #d9cc4f;
+}
+
+.status-ring.unavailable {
+    opacity: 0.5;
+    visibility: visible;
+    stroke: #d95d4f;
+}
+
 .capacity-background {
     fill: #daeefa;
     stroke: #51bbfd;
@@ -313,6 +336,23 @@ body {
     text-align: right;
 }
 
+.box .details .status {
+    text-align: right;
+    text-decoration: underline;
+}
+
+.box .details .available {
+    color: #82cc00;
+}
+
+.box .details .mixed {
+    color: #d9cc4f;
+}
+
+.box .details .unavailable {
+    color: #d95d4f;
+}
+
 .box .details td {
     font-size: 10pt;
     font-weight: normal;
@@ -323,11 +363,11 @@ body {
 .localities {
     position: absolute;
     left: 2%;
-    width: 36%;
+    width: 37%;
 }
 
 .databases {
     position: absolute;
-    left: 42%;
+    left: 41%;
     width: 56%;
 }

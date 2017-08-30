@@ -441,7 +441,8 @@ Model.prototype.computeLocalityLinkPaths = function() {
       if (closest != [0, 0]) {
         // We bend if the distance is within 2x the max radius (2x is
         // determined empirically for aesthetics).
-        if (distance(closest, loc.pos) < maxR*2) {
+        var dist = distance(closest, loc.pos);
+        if (dist < maxR * 2) {
           // This part is a bit dicey, so here's an explanation of the
           // algorithm:
           // - Compute the vector from the locality center to closest point.
@@ -456,10 +457,12 @@ Model.prototype.computeLocalityLinkPaths = function() {
               perpV = mult(invertNorm, magnitude),
               dir1 = add(loc.pos, perpV),
               dir2 = sub(loc.pos, perpV);
-          if (distance(closest, dir1) < distance(closest, dir2)) {
-            link.points.push(dir1);
-          } else {
-            link.points.push(dir2);
+          if (dist < magnitude) {
+            if (distance(closest, dir1) < distance(closest, dir2)) {
+              link.points.push(dir1);
+            } else {
+              link.points.push(dir2);
+            }
           }
         }
       }

@@ -41,6 +41,34 @@ Locality.prototype.adjustLocation = function(i, count, radius) {
   }
 }
 
+Locality.prototype.state = function() {
+  var liveCount = this.liveCount();
+  if (liveCount == 0) {
+    return "unavailable";
+  } else if (liveCount < this.nodes.length) {
+    return "mixed";
+  }
+  return "available";
+}
+
+Locality.prototype.toggleState = function() {
+  var newState = "down";
+  if (this.liveCount() < this.nodes.length) {
+    newState = "healthy";
+  }
+  for (var i = 0; i < this.nodes.length; i++) {
+    this.nodes[i].state = newState;
+  }
+}
+
+Locality.prototype.liveCount = function() {
+  var count = 0;
+  for (var i = 0; i < this.nodes.length; i++) {
+    count += (this.nodes[i].state == "healthy") ? 1 : 0;
+  }
+  return count;
+}
+
 Locality.prototype.leaderCount = function() {
   var count = 0;
   for (var i = 0; i < this.nodes.length; i++) {

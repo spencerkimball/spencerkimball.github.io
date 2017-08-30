@@ -51,7 +51,7 @@ Request.prototype.route = function(sourceNode, endFn) {
   var destNode = this.destReplica.roachNode;
   if (destNode.id == sourceNode.id) {
     // Loopback; just process the requeest without sending further.
-    this.process(endFn);
+    this.process(true, endFn);
     return;
   }
   if (destNode.id in sourceNode.routes) {
@@ -71,7 +71,12 @@ Request.prototype.writeDirect = function(sourceNode, targetNode, endFn) {
   // Route the request.
   if (!(targetNode.id in sourceNode.routes)) {
     throw "missing route from " + sourceNode.id + " to " + targetNode.id + "; ignoring.";
-    return true;
+    return;
+  }
+  // No-op if target node is down.
+  if (targetNode.down()) {
+    this.process(false, endFn);
+    return;
   }
   var route = sourceNode.routes[targetNode.id];
 
@@ -97,7 +102,7 @@ Request.prototype.writeDirect = function(sourceNode, targetNode, endFn) {
         //console.log(req.id + " being reforwarded to changed leader")
         return true;
       }
-      that.process(endFn);
+      that.process(that.payload.canSucceed(), endFn);
       route.record(that);
       return that.success;
     }
@@ -105,12 +110,12 @@ Request.prototype.writeDirect = function(sourceNode, targetNode, endFn) {
   })
 }
 
-Request.prototype.process = function(endFn) {
+Request.prototype.process = function(success, endFn) {
   // We've arrived at the correct replica; try to add the request
   // to the replica. If there's no space here and we're the
   // leader, fail the request immediately (i.e. skip forwarding to
   // followers).
-  this.success = this.payload.canSucceed();
+  this.success = success;
   if (endFn != null) {
     endFn();
   } else {
@@ -140,7 +145,8 @@ DataPayload.prototype.radius = function() {
 }
 
 DataPayload.prototype.canSucceed = function() {
-  return this.req.destReplica.hasSpace(this.size, true /* count log */);
+  return !this.req.destReplica.roachNode.down() &&
+    this.req.destReplica.hasSpace(this.size, true /* count log */);
 }
 
 DataPayload.prototype.applySuccess = function() {
@@ -169,7 +175,7 @@ SplitPayload.prototype.radius = function() {
 }
 
 SplitPayload.prototype.canSucceed = function() {
-  return true;
+  return !this.req.destReplica.roachNode.down();
 }
 
 SplitPayload.prototype.applySuccess = function() {
@@ -194,7 +200,7 @@ HeartbeatPayload.prototype.radius = function() {
 }
 
 HeartbeatPayload.prototype.canSucceed = function() {
-  return true;
+  return !this.req.destReplica.roachNode.down();
 }
 
 HeartbeatPayload.prototype.applySuccess = function() {

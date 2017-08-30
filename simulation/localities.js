@@ -108,6 +108,13 @@ Localities.prototype.locality = function(model, sel) {
 
   sel.attr("transform", "translate(" + -100 + ", " + -100 + ")");
 
+  // Locality status ring.
+  sel.append("circle")
+    .transition()
+    .duration(250)
+    .attr("r", this.maxRadius(model) * 1.25)
+    .attr("class", "status-ring available");
+
   // Capacity arc.
   var capacityG = sel.append("g");
   capacityG.append("path")
@@ -261,6 +268,12 @@ Localities.prototype.update = function(model) {
       outerR = innerR + arcWidth,
       locSel = model.localitySel,
       linkSel = model.localityLinkSel;
+
+  locSel.selectAll(".status-ring")
+    .attr("class", function(d) { return "status-ring " + d.state(); })
+    .transition()
+    .duration(1000)
+    .attr("r", this.maxRadius(model) * 1.5);
 
   locSel.selectAll(".capacity-label")
     .attr("x", (outerR + arcWidth) * Math.cos(0))

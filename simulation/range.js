@@ -27,9 +27,17 @@ Range.prototype.start = function() {
   for (var i = 0; i < this.replicas.length; i++) {
     this.replicas[i].start();
   }
-  if (!this.model.quiesceRaft) { // TODO(spencer): perhaps this should be lazyloadRaft instead for more options
-    this.startHeartbeat();
+  this.startHeartbeat();
+}
+
+Range.prototype.hasQuorum = function() {
+  var liveCount = 0;
+  for (var i = 0; i < this.replicas.length; i++) {
+    if (!this.replicas[i].roachNode.down()) {
+      liveCount++;
+    }
   }
+  return liveCount >= this.quorum();
 }
 
 Range.prototype.quorum = function() {
@@ -151,17 +159,43 @@ Range.prototype.maybeSplit = function() {
   }
 }
 
+// tryElection attempts to select a new leader if there are is at
+// least a quorum of live replicas. The new leader is chosen randomly
+// from amongst the live replicas.
+Range.prototype.tryElection = function() {
+  var live = [];
+  for (var i = 0; i < this.replicas.length; i++) {
+    if (!this.replicas[i].roachNode.down()) {
+      live.push(this.replicas[i]);
+    }
+  }
+  if (live.length >= this.quorum()) {
+    //var oldLeader = this.leader;
+    this.leader = live[Math.floor(Math.random() * live.length)];
+    //console.log(this.id + " replacing leader " + oldLeader.roachNode.id + " with " + this.leader.roachNode.id);
+  }
+}
+
 Range.prototype.startHeartbeat = function() {
-  if (!this.model.showHeartbeats || this.stopped) return;
-  this.heartbeating = true;
-  var that = this;
   clearTimeout(this.timeout);
-  var timeout = this.model.heartbeatInterval;
-  this.timeout = setTimeout(function() { that.sendHeartbeat(); that.startHeartbeat() }, timeout);
+  // If the leader is down, try to elect a new leader.
+  if (this.leader.roachNode.down()) {
+    this.tryElection();
+  }
+  var that = this;
+  this.timeout = setTimeout(function() {
+    // TODO(spencer): perhaps this should be lazyloadRaft instead for
+    // more options.
+    if (!that.model.quiesceRaft) {
+      this.heartbeating = true;
+      that.sendHeartbeat();
+    }
+    that.startHeartbeat();
+  }, this.model.heartbeatInterval);
 }
 
 Range.prototype.sendHeartbeat = function() {
-  if (!this.model.showHeartbeats) return;
+  if (!this.model.showHeartbeats || this.stopped) return;
   clearTimeout(this.timeout);
   var req = new Request(new HeartbeatPayload(), this.leader, null, this.model);
   req.success = true;
@@ -220,12 +254,15 @@ Range.prototype.add = function(req) {
     //console.log("leader " + req.id + " arrived; forwarding")
     req.replicated[req.destReplica.id] = req;
     this.reqMap[req.id] = req;
-    this.forwardReq(req);
-    // Start heartbeat only if this isn't a heartbeat.
-    if (!(req.payload instanceof HeartbeatPayload)) {
-      this.startHeartbeat();
-    } else {
-      return;
+
+    if (req.success) {
+      this.forwardReq(req);
+      // Start heartbeat only if this isn't a heartbeat.
+      if (!(req.payload instanceof HeartbeatPayload)) {
+        this.startHeartbeat();
+      } else {
+        return;
+      }
     }
   }
 

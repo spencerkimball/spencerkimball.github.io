@@ -54,3 +54,35 @@ Database.prototype.throughput = function() {
   }
   return throughput;
 }
+
+// availability returns the fraction of ranges in the
+Database.prototype.availability = function() {
+  var count = 0,
+      available = 0;
+  for (var i = 0; i < this.tables.length; i++) {
+    for (var j = 0; j < this.tables[i].ranges.length; j++) {
+      if (this.tables[i].ranges[j].hasQuorum()) {
+        available++;
+      }
+      count++;
+    }
+  }
+  return available / count;
+}
+
+// underReplicated returns the total size (in units, not bytes) that
+// replicas in this database are under-replicated.
+Database.prototype.underReplicated = function() {
+  var total = 0;
+  for (var i = 0; i < this.tables.length; i++) {
+    for (var j = 0; j < this.tables[i].ranges.length; j++) {
+      var rng = this.tables[i].ranges[j];
+      for (var k = 0; k < rng.replicas.length; k++) {
+        if (rng.replicas[k].roachNode.down()) {
+          total += rng.quorumSize() - rng.replicas[k].getSize(false);
+        }
+      }
+    }
+  }
+  return total;
+}

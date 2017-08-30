@@ -19,5 +19,8 @@ ExpVar.prototype.record = function(value) {
 ExpVar.prototype.getValue = function() {
   var time = Date.now(),
       deltaTime = time - this.lastTime;
+  if (deltaTime >= this.halfLife) {
+    return this.value = 0;
+  }
   return (this.value * Math.exp(-deltaTime / this.halfLife)) / 10;
 }

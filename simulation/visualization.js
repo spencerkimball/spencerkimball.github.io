@@ -285,12 +285,19 @@ function removeModel(model) {
   d3.select("#" + model.id).select(".model-container").remove();
 }
 
+function formatLiveCount(loc) {
+  var liveCount = loc.liveCount(),
+      cl = loc.state();
+  return "<span class=\"" + cl + "\">" + liveCount + " / " + loc.nodes.length + "</span>";
+}
+
 var localityTable = [
   { head: "Name", cl: "left", html: function(d) { return d.name; } },
   { head: "Usage", cl: "right", html: function(d) { return bytesToSize(d.usageSize * d.model.unitSize); } },
   { head: "Capacity", cl: "right", html: function(d) { return bytesToSize(d.capacity() * d.model.unitSize); } },
   { head: "Throughput", cl: "right", html: function(d) { return bytesToActivity(d.cachedTotalNetworkActivity * d.model.unitSize); } },
-  { head: "Client&nbsp;traffic", cl: "right", html: function(d) { return bytesToActivity(d.cachedClientActivity * d.model.unitSize); } }
+  { head: "Client&nbsp;traffic", cl: "right", html: function(d) { return bytesToActivity(d.cachedClientActivity * d.model.unitSize); } },
+  { head: "Status", cl: "right status", html: function(d) { return formatLiveCount(d); } }
 ];
 
 var databaseTable = [
@@ -298,7 +305,8 @@ var databaseTable = [
   { head: "Sites", cl: "left", html: function(d) { return d.sites(); } },
   { head: "Usage", cl: "right", html: function(d) { return bytesToSize(d.usage() * d.model.unitSize); } },
   { head: "Throughput", cl: "right", html: function(d) { return bytesToActivity(d.throughput() * d.model.unitSize); } },
-  { head: "Availability", cl: "right", html: function(d) { return "100%"; } }
+  { head: "Avail.", cl: "right", html: function(d) { return (Math.round(d.availability() * 1000) / 10.0) + "%"; } },
+  { head: "Rep.&nbsp;lag", cl: "right", html: function(d) { return bytesToSize(d.underReplicated() * d.model.unitSize); } }
 ];
 
 function layoutModel(model) {
@@ -350,7 +358,7 @@ function layoutModel(model) {
     .style("cursor", "pointer")
     .on("mouseover", function(d) { showLocalityLinks(model, d); })
     .on("mouseout", function(d) { hideLocalityLinks(model, d); })
-    .on("click", function(d) { zoomToLocality(model, 750, d.locality, true); })
+    .on("click", function(d) { zoomToLocality(model, 750, d.locality, true); });
   model.localityRowSel.selectAll("td")
     .data(function(locality) {
       return localityTable.map(function(column) {
@@ -359,7 +367,14 @@ function layoutModel(model) {
     })
     .enter()
     .append("td")
-    .attr("class", function(d) { return d.column.cl; });
+    .attr("class", function(d) { return d.column.cl; })
+    .on("click", function(d) {
+      if (d.column.head == "Status") {
+        d3.event.stopPropagation();
+        d.locality.toggleState();
+        refreshModel(d.locality.model);
+      }
+    });
   model.localityRowSel.exit().remove();
   model.localityRowSel.style("fill-opacity", 0)
     .style("stroke-opacity", 0)
@@ -382,6 +397,7 @@ function layoutModel(model) {
     .attr("id", function(d) { return d.id; })
     .on("mouseover", function(d) { showUsageDetail(model, null, d); })
     .on("mouseout", function(d) { hideUsageDetail(model, null); });
+
   model.databaseRowSel.selectAll("td")
     .data(function(db) {
       return databaseTable.map(function(column) {
