@@ -9,7 +9,7 @@ function App(zone, tables, model) {
   // Select a roachNode from within nodes matching the specified zone.
   var nodes = model.findMatchingNodes(zone);
   if (nodes.length == 0) {
-    console.log("ERROR: not enough nodes matching zone=" + zone + " to accommodate app");
+    console.log("ERROR: not enough nodes matching zone \"" + zone + "\" to accommodate app");
   }
   this.roachNode = nodes[Math.floor(Math.random() * nodes.length)];
   this.model = model;

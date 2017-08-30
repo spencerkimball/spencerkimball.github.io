@@ -67,11 +67,13 @@ function showLocalityLinks(model, locality) {
     .duration(250)
     .attr("visibility", function(d) { return (d.l1 == locality || d.l2 == locality) ? "visible" : "hidden"; })
     .attr("opacity", function(d) { return (d.l1 == locality || d.l2 == locality) ? 1 : 0; });
+  /*
   model.svg.selectAll(".expand-label")
     .transition()
     .duration(250)
     .attr("visibility", function(d) { return (d == locality) ? "visible" : "hidden"; })
     .attr("opacity", function(d) { return (d == locality) ? 1 : 0; });
+  */
 }
 
 function hideLocalityLinks(model, locality) {
@@ -80,11 +82,13 @@ function hideLocalityLinks(model, locality) {
     .duration(250)
     .attr("visibility", "hidden")
     .attr("opacity", 0);
+  /*
   model.svg.selectAll(".expand-label")
     .transition()
     .duration(250)
     .attr("visibility", "hidden")
     .attr("opacity", 0);
+  */
 }
 
 function Localities() {
@@ -177,11 +181,13 @@ Localities.prototype.locality = function(model, sel) {
     .text(function(d) { return d.name; });
 
   // Expand label.
+  /*
   sel.append("text")
     .attr("class", "expand-label")
     .attr("transform", "translate(0, " + (-1.1 * outerR) + ")")
     .attr("opacity", 0)
     .text(function(d) { return d.nodes.length > 1 ? "Expand x" + d.nodes.length : ""; });
+  */
 
   // Circle for showing usage detail.
   sel.append("circle")
