@@ -20,7 +20,7 @@ function Model(id, width, height, initFn) {
   this.minAppXfer = 1000;        // in ms
   this.maxAppXfer = 10000;       // in ms
   this.heartbeatInterval = 1500; // in ms
-  this.periodicInterval = 1000;  // in ms
+  this.periodicInterval = 2000;  // in ms
   this.roachNodes = [];
   this.tables = [];
   this.databases = [];
@@ -428,14 +428,32 @@ Model.prototype.computeLocalityLinkPaths = function() {
         skip = maxR;
     link.points = [link.l1.pos, add(link.l1.pos, mult(norm, skip))];
 
-    // Bend the curve around any intersected localities.
+    // Bend the curve around any localities which come too close to
+    // the line drawn to represent this locality link. This inner
+    // loop just adds additional points to the cardinal curve.
     for (var j = 0; j < this.localities.length; j++) {
+      // First, find the closest point on the locality link segment to
+      // the center of each locality.
       var loc = this.localities[j],
           closest = findClosestPoint(link.l1.pos, link.l2.pos, loc.pos);
+      // Only consider bending the locality link IF the closest point
+      // lies on the segment _between_ the two localities.
       if (closest != [0, 0]) {
-        if (distance(closest, loc.pos) < maxR*1.5) {
-          var invertNorm = invert(norm),
-              perpV = mult(invertNorm, maxR*1.5),
+        // We bend if the distance is within 2x the max radius (2x is
+        // determined empirically for aesthetics).
+        if (distance(closest, loc.pos) < maxR*2) {
+          // This part is a bit dicey, so here's an explanation of the
+          // algorithm:
+          // - Compute the vector from the locality center to closest point.
+          // - Measure the angle; if between 45 degrees and 135 degrees:
+          //   - If vector points down, bend 2x the max radius to clear the
+          //     locality name tag.
+          //   - Otherwise, bend 1.5x max radius.
+          var cVec = sub(closest, loc.pos),
+              angle = (cVec[0] == 0) ? Math.PI / 2 : Math.abs(Math.atan(cVec[1] / cVec[0])),
+              magnitude = (angle < Math.PI * 3 / 4 && angle > Math.PI / 4) ? (cVec[1] > 1 ? maxR * 2 : maxR * 1.5) : maxR * 1.5,
+              invertNorm = invert(norm),
+              perpV = mult(invertNorm, magnitude),
               dir1 = add(loc.pos, perpV),
               dir2 = sub(loc.pos, perpV);
           if (distance(closest, dir1) < distance(closest, dir2)) {

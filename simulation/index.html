@@ -202,7 +202,7 @@ function initModel(model) {
 
   // First, globally replicated tables.
   var globalZoneConfig = [["region=United States"], ["region=European Union"], ["region=Australia"], ["region=China"], ["region=India"]];
-  var globalDB = new Database("Global Schema", model);
+  var globalDB = new Database("Global Control", model);
   var globalT1 = new Table("global.control", globalZoneConfig, model.splitSize * 2, globalDB, model);
   var globalT2 = new Table("global.sso", globalZoneConfig, model.splitSize, globalDB, model);
   for (i = 0; i < 5; i++) {
@@ -220,20 +220,18 @@ function initModel(model) {
   }
 
   // App2 lives across eu and au and has three tables.
-  var euauSpanningConfig = [["city=London"], ["city=Stockholm"], ["city=Frankfurt"], ["city=Sydney"], ["city=Melbourne"]];
-  var euPhotosDB = new Database("EU Photo Sharing", model);
+  var euauSpanningConfig = [["city=London"], ["city=Stockholm"], ["city=Frankfurt"]];
+  var euPhotosDB = new Database("EU Messaging", model);
   var app2T1 = new Table("app2.user", euauSpanningConfig, model.splitSize * 1, euPhotosDB, model);
   var app2T2 = new Table("app2.photo", euauSpanningConfig, model.splitSize * 2, euPhotosDB, model);
   var app2T3 = new Table("app2.comment", euauSpanningConfig, model.splitSize * 5, euPhotosDB, model);
   new App(["city=London"], [app2T1, app2T2, app2T3], model);
   new App(["city=Stockholm"], [app2T1, app2T2, app2T3], model);
   new App(["city=Frankfurt"], [app2T1, app2T2, app2T3], model);
-  new App(["city=Sydney"], [app2T1, app2T2, app2T3], model);
-  new App(["city=Melbourne"], [app2T1, app2T2, app2T3], model);
 
   // App3 lives only in China.
   var cnSpanningConfig = [["city=Shenzhen"], ["city=Shanghai"], ["city=Beijing"]];
-  var cnProductDB = new Database("Chinese Products", model);
+  var cnProductDB = new Database("Chinese Marketplace", model);
   var app3T1 = new Table("app3.merchant", cnSpanningConfig, model.splitSize * 2, cnProductDB, model);
   var app3T2 = new Table("app3.catalog", cnSpanningConfig, model.splitSize * 10, cnProductDB, model);
   var app3T3 = new Table("app3.product", cnSpanningConfig, model.splitSize * 15, cnProductDB, model);

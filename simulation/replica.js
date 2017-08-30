@@ -291,7 +291,7 @@ Replica.prototype.chooseRebalanceTarget = function() {
   }
   mean /= nodes.length;
 
-  var reqDistance = 0.5;
+  var reqDistance = 2;
   if (this.model.exactRebalancing) {
     reqDistance = 0;
   }
