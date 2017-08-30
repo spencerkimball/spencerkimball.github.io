@@ -104,16 +104,27 @@ Localities.prototype.maxRadius = function(model) {
 Localities.prototype.locality = function(model, sel) {
   var innerR = model.nodeRadius,
       arcWidth = model.nodeRadius * 0.11111,
-      outerR = innerR + arcWidth;
+      outerR = innerR + arcWidth,
+      maxRadius = this.maxRadius(model);
 
   sel.attr("transform", "translate(" + -100 + ", " + -100 + ")");
 
   // Locality status ring.
-  sel.append("circle")
-    .transition()
-    .duration(250)
-    .attr("r", this.maxRadius(model) * 1.25)
-    .attr("class", "status-ring available");
+  var statusRings = sel.append("circle")
+      .attr("class", "status-ring available");
+  repeat();
+  function repeat() {
+    statusRings.attr("r", maxRadius * 1.4)
+      .transition()
+      .duration(750)
+      .ease("linear")
+      .attr("r", maxRadius * 1.5)
+      .transition()
+      .duration(750)
+      .ease("linear")
+      .attr("r", maxRadius * 1.4)
+      .each("end", repeat);
+  }
 
   // Capacity arc.
   var capacityG = sel.append("g");
@@ -270,10 +281,7 @@ Localities.prototype.update = function(model) {
       linkSel = model.localityLinkSel;
 
   locSel.selectAll(".status-ring")
-    .attr("class", function(d) { return "status-ring " + d.state(); })
-    .transition()
-    .duration(1000)
-    .attr("r", this.maxRadius(model) * 1.5);
+    .attr("class", function(d) { return "status-ring " + d.state(); });
 
   locSel.selectAll(".capacity-label")
     .attr("x", (outerR + arcWidth) * Math.cos(0))

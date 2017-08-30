@@ -113,7 +113,7 @@ body {
 }
 
 .status-ring.mixed {
-    opacity: 0.2;
+    opacity: 0.5;
     visibility: visible;
     stroke: #d9cc4f;
 }
