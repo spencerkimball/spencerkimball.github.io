@@ -83,7 +83,7 @@ RoachNode.prototype.setBusy = function(busy) {
 RoachNode.prototype.usageByTable = function(usageMap) {
   for (var i = 0; i < this.replicas.length; i++) {
     if (this.replicas[i].range != null) {
-      var size = this.replicas[i].getSize(true),
+      var size = this.replicas[i].getSize(false),
           table = this.replicas[i].range.table.name;
       if (table in usageMap) {
         usageMap[table] += size;
@@ -98,7 +98,7 @@ RoachNode.prototype.usageByTable = function(usageMap) {
 RoachNode.prototype.usageByDB = function(usageMap) {
   for (var i = 0; i < this.replicas.length; i++) {
     if (this.replicas[i].range != null) {
-      var size = this.replicas[i].getSize(true),
+      var size = this.replicas[i].getSize(false),
           db = this.replicas[i].range.table.db.name;
       if (db in usageMap) {
         usageMap[db] += size;
