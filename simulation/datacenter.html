@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<head>
+  <link rel="stylesheet" type="text/css" href="style.css" media="screen" />
+  <link href='http://fonts.googleapis.com/css?family=Lato:400,700' rel='stylesheet' type='text/css' />
+</head>
+
+<body>
+  <script src="d3.v3.js"></script>
+  <script src="d3-path.v1.min.js"></script>
+  <script src="d3-shape.v1.min.js"></script>
+  <script src="database.js"></script>
+  <script src="expvar.js"></script>
+  <script src="model.js"></script>
+  <script src="link.js"></script>
+  <script src="locality.js"></script>
+  <script src="locality_link.js"></script>
+  <script src="node.js"></script>
+  <script src="table.js"></script>
+  <script src="range.js"></script>
+  <script src="replica.js"></script>
+  <script src="request.js"></script>
+  <script src="app.js"></script>
+  <script src="visualization.js"></script>
+  <script src="localities.js"></script>
+  <script src="boxes.js"></script>
+  <script src="circles.js"></script>
+
+  <div class="box">
+    <div id="Datacenter" class="model"></div>
+
+    <div class="details">
+      <div class="localities">
+        <h2>Replication Sites</h2>
+        <table id="localities">
+          <thead>
+            <tr></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="databases">
+        <h2>Databases</h2>
+        <table id="databases">
+          <thead>
+            <tr></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+
+function initModel(model) {
+  model.projection = d3.geo.mercator();
+  model.skin = new Localities();
+  model.enablePlayAndReload = false;
+  model.enableAddNodeAndApp = false;
+  model.displaySimState = false;
+
+  // Facilities.
+  var Facilities = [
+    {
+      name: "Atlanta",
+      location: [-84.3880, 33.7490],
+      locality: [],
+      racks: 3,
+      nodes_per_rack: 6,
+    },
+  ];
+
+  // Add racks and nodes for each facility.
+  for (var i = 0; i < Facilities.length; i++) {
+    var facility = Facilities[i];
+    for (var k = 0; k < facility.racks; k++) {
+      for (var l = 0; l < facility.nodes_per_rack; l++) {
+        var locality = facility.locality.slice(0);
+        if (facility.racks > 1) {
+          locality.push("rack=rack " + k);
+        }
+        new RoachNode("10.10." + (k + 1) + "." + (l + 1), facility.location, locality, model);
+      }
+    }
+  }
+
+  // Create tables, with a mix of spanning and local zone configs.
+
+  // App1 lives in Atlanta datacenter.
+  var usSpanningConfig = [["rack=rack 0"], ["rack=rack 1"], ["rack=rack 2"]];
+  var usSalesDB = new Database("US Sales", model);
+  var app1T1 = new Table("app1.customer", usSpanningConfig, model.splitSize * 1, usSalesDB, model);
+  var app1T2 = new Table("app1.item", usSpanningConfig, model.splitSize * 2, usSalesDB, model);
+  var app1T3 = new Table("app1.order", usSpanningConfig, model.splitSize * 5, usSalesDB, model);
+  for (i = 0; i < 9; i++) {
+    new App(["*"], [app1T1, app1T2, app1T3], model);
+  }
+
+  // App2 lives in Atlanta datacenter.
+  var usPhotosDB = new Database("Photo messenger", model);
+  var app2T1 = new Table("app1.customer", usSpanningConfig, model.splitSize * 2, usPhotosDB, model);
+  var app2T2 = new Table("app1.item", usSpanningConfig, model.splitSize * 2, usPhotosDB, model);
+  var app2T3 = new Table("app1.order", usSpanningConfig, model.splitSize * 2, usPhotosDB, model);
+  for (i = 0; i < 9; i++) {
+    new App(["*"], [app2T1, app2T2, app2T3], model);
+  }
+
+  addModel(model);
+}
+new Model("Datacenter", viewWidth, viewHeight * 1, function(m) { initModel(m); });
+
+</script>
+</body>
