@@ -1,6 +1,6 @@
 function Locality(locality, nodes, model) {
   this.id = "loc" + model.localityCount++;
-  this.name = localityName(locality);
+  this.name = localityName(locality, model);
   this.locality = locality;
   this.links = {};
   this.nodes = nodes;
@@ -169,9 +169,9 @@ Locality.prototype.refreshUsageDetails = function() {
 
 // localityName extracts the locality name as the first element of the
 // locality array and strips out any leading ".*=" pattern.
-function localityName(locality) {
+function localityName(locality, model) {
   if (locality.length == 0) {
-    return "Global";
+    return model.id;
   }
   var name = locality[locality.length - 1],
       idx = name.indexOf("=");
@@ -181,9 +181,9 @@ function localityName(locality) {
   return name;
 }
 
-function fullLocalityName(locality) {
+function fullLocalityName(locality, model) {
   if (locality.length == 0) {
-    return "Global";
+    return model.id;
   }
   var fullName = "";
   for (var i = 0; i < locality.length; i++) {

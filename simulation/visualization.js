@@ -51,7 +51,7 @@ function addModel(model) {
     .attr("class", "current-locality")
     .attr("dx", function(d) { return "22"; })
     .attr("dy", function(d) { return "1em"; })
-    .text(fullLocalityName(model.currentLocality));
+    .text(fullLocalityName(model.currentLocality, model));
 
   if (model.displaySimState) {
     model.rpcSendCount = 0;
@@ -145,7 +145,7 @@ function zoomToLocality(model, duration, locality, updateHistory) {
     .duration(duration / 2)
     .style("opacity", 0)
     .each("end", function() {
-      localityLabel.text(fullLocalityName(model.currentLocality))
+      localityLabel.text(fullLocalityName(model.currentLocality, model))
         .style("opacity", 0)
         .transition()
         .duration(duration / 2)
@@ -447,10 +447,9 @@ function layoutModel(model) {
         if (d == null) {
           return;
         }
-        var loc = d.pos;
-        d.x = loc[0];
-        d.y = loc[1];
-        return "translate(" + loc + ")scale(" + model.localityScale + ")";
+        d.x = d.pos[0];
+        d.y = d.pos[1];
+        return "translate(" + d.pos + ")scale(" + model.localityScale + ")";
       });
     model.localityLinkSel.selectAll(".locality-link")
       .attr("d", function(d) { return d3.line().curve(d3.curveCardinalOpen.tension(0.5))(d.points); });

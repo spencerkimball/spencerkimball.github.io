@@ -212,7 +212,7 @@ Replica.prototype.findMatchingZone = function() {
     for (var j = 0; j < zone.length && allMatch; j++) {
       var matches = false;
       for (var k = 0; k < node.locality.length && !matches; k++) {
-        if (zone[j] == node.locality[k]) {
+        if (zone[j] == "*" || zone[j] == node.locality[k]) {
           matches = true;
         }
       }
