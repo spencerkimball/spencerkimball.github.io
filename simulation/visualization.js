@@ -5,15 +5,6 @@ var viewWidth = 960, viewHeight = 500;
 var timeScale = 2; // multiple for slowing down (< 1) or speeding up (> 1) animations
 var color = d3.scale.category20();
 
-d3.selection.prototype.moveToBack = function() {
-  return this.each(function() {
-    var firstChild = this.parentNode.firstChild;
-    if (firstChild) {
-      this.parentNode.insertBefore(this, firstChild);
-    }
-  })
-}
-
 function addModel(model) {
   window.onpopstate = function(event) {
     if (event.state == null) {
@@ -275,6 +266,13 @@ function layoutProjection(model) {
       .enter().append("path")
       .attr("class", "geopath");
     model.projectionG.call(model.zoom.event);
+  });
+
+  d3.json("https://spencerkimball.github.io/simulation/cities100000.json", function(error, collection) {
+    if (error) throw error;
+    console.log(collection.features);
+    //model.citiesG.selectAll("circle")
+      //.data(collection.features
   });
 
   model.projection.scale(model.maxScale);
