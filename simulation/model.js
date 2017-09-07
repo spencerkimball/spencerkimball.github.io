@@ -46,6 +46,7 @@ function Model(id, width, height, initFn) {
   this.quiesceRaft = true;
   this.stopped = true;
   this.played = false;
+  this.showLatencies = false;
 
   this.projectionName = "none";
   this.projection = function(p) { return p };
@@ -139,13 +140,33 @@ Model.prototype.selectNodes = function(locality) {
   return nodes;
 }
 
+Model.prototype.latency = function(coords, oCoords) {
+  return 5 + 80000 * distance(coords, oCoords) / (viewWidth * this.projection.scale());
+}
+
+// localityLatencies computes the latencies from the city's location
+// via attributes 'latitude' and 'longitude' and returns an array of
+// latencies, one per locality in order of localities. The array of
+// latencies is cached on the city object for performance.
+Model.prototype.localityLatencies = function(city) {
+  if (city.latencies == null) {
+    city.latencies = [];
+    for (var i = 0; i < this.localities.length; i++) {
+      city.latencies.push(this.latency(
+        this.projection(this.localities[i].location),
+        this.projection([city.longitude, city.latitude])));
+    }
+  }
+  return city.latencies;
+}
+
 Model.prototype.addNode = function(node) {
   // Link this node to all others.
   var coords = this.projection(node.location);
   for (var i = 0; i < this.roachNodes.length; i++) {
     var oNode = this.roachNodes[i];
     var oCoords = this.projection(oNode.location);
-    var latency = 550 * Math.sqrt((coords[0] - oCoords[0]) * (coords[0] - oCoords[0]) + (coords[1] - oCoords[1]) * (coords[1] - oCoords[1])) / viewWidth;
+    var latency = this.latency(coords, oCoords);
     var l = new Link(node, oNode, "route", latency, this);
     node.routes[oNode.id] = l;
     var rl = new Link(oNode, node, "route", latency, this);
@@ -290,6 +311,10 @@ Model.prototype.sendRequest = function(payload, link, reverse, endFn) {
 }
 
 Model.prototype.resetLocalities = function() {
+  // Reset all city latencies.
+  for (var i = 0; i < globalCities.length; i++) {
+    globalCities[i].latencies = null;
+  }
   // Determine localities to display based on current locality.
   var localityMap = {};
   this.localities = [];

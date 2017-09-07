@@ -35,6 +35,9 @@ function latencyMilliseconds(latency) {
 }
 
 function showUsageDetail(model, d, database) {
+  if (model.showLatencies) {
+    return;
+  }
   var set = {};
   if (database == "*") {
     for (var i = 0; i < model.databases.length; i++) {
@@ -62,18 +65,14 @@ function hideUsageDetail(model, d) {
 }
 
 function showLocalityLinks(model, locality) {
+  if (model.showLatencies) {
+    return;
+  }
   model.svg.selectAll(".locality-link-group")
     .transition()
     .duration(250)
     .attr("visibility", function(d) { return (d.l1 == locality || d.l2 == locality) ? "visible" : "hidden"; })
     .attr("opacity", function(d) { return (d.l1 == locality || d.l2 == locality) ? 1 : 0; });
-  /*
-  model.svg.selectAll(".expand-label")
-    .transition()
-    .duration(250)
-    .attr("visibility", function(d) { return (d == locality) ? "visible" : "hidden"; })
-    .attr("opacity", function(d) { return (d == locality) ? 1 : 0; });
-  */
 }
 
 function hideLocalityLinks(model, locality) {
@@ -82,13 +81,22 @@ function hideLocalityLinks(model, locality) {
     .duration(250)
     .attr("visibility", "hidden")
     .attr("opacity", 0);
-  /*
-  model.svg.selectAll(".expand-label")
-    .transition()
-    .duration(250)
-    .attr("visibility", "hidden")
-    .attr("opacity", 0);
-  */
+}
+
+function setLocalitiesVisibility(model) {
+  var capacityVisibility = model.showLatencies ? "hidden" : "visible";
+  var latencyVisibility = model.showLatencies ? "visible" : "hidden";
+  model.svgParent.selectAll(".capacity-centric")
+    .attr("visibility", capacityVisibility);
+  model.svgParent.selectAll(".latency-centric")
+    .attr("visibility", latencyVisibility);
+  model.projectionG.selectAll(".city")
+    .attr("visibility", function(d) {
+      if (model.showCityDetail != null) {
+        return (model.showCityDetail == d.name) ? "visible" : "hidden";
+      }
+      return latencyVisibility;
+    });
 }
 
 function Localities() {
@@ -126,8 +134,11 @@ Localities.prototype.locality = function(model, sel) {
       .each("end", repeat);
   }
 
+  // The capacity-centric locality group.
+  var capacityG = sel.append("g")
+      .attr("class", "capacity-centric");
+
   // Capacity arc.
-  var capacityG = sel.append("g");
   capacityG.append("path")
     .attr("d", function(d) { return createArcPath(innerR, outerR, arcAngleFromPct(0), arcAngleFromPct(1)); })
     .attr("class", "capacity-background");
@@ -135,7 +146,7 @@ Localities.prototype.locality = function(model, sel) {
     .attr("class", "capacity-label");
 
   // Used capacity arc segments (one per database).
-  var usedG = sel.append("g");
+  var usedG = capacityG.append("g");
   usedG.append("text")
     .attr("class", "capacity-used-label");
   var arcSel = usedG.selectAll("path")
@@ -154,7 +165,7 @@ Localities.prototype.locality = function(model, sel) {
     .attr("class", "size");
 
   // Capacity labels.
-  var capacityLabels = sel.append("g")
+  var capacityLabels = capacityG.append("g")
       .attr("transform", "translate(" + -outerR + ", " + -outerR + ")");
   var capacityLabelsSVG = capacityLabels.append("svg")
       .attr("width", outerR * 2)
@@ -170,7 +181,7 @@ Localities.prototype.locality = function(model, sel) {
     .text("CAPACITY USED");
 
   // Client / network activity.
-  var activityG = sel.append("g")
+  var activityG = capacityG.append("g")
       .attr("transform", "translate(" + 0 + ", " + (innerR * Math.sin(angleFromPct(0))) + ")");
   activityG.append("line")
     .attr("class", "client-activity");
@@ -182,7 +193,7 @@ Localities.prototype.locality = function(model, sel) {
     .attr("class", "network-activity-label");
 
   // Locality label.
-  var localityLabels = sel.append("g")
+  var localityLabels = capacityG.append("g")
       .attr("transform", "translate(" + -outerR + ", " + outerR * 0.9 + ")");
   localityLabels.append("path")
     .attr("d", function(d) { return drawBox(outerR * 2, 20, 0.05); })
@@ -194,21 +205,10 @@ Localities.prototype.locality = function(model, sel) {
     .attr("class", "locality-label")
     .attr("x", "50%")
     .attr("y", "55%")
-    .attr("alignment-baseline", "middle")
-    .attr("text-anchor", "middle")
     .text(function(d) { return d.name; });
 
-  // Expand label.
-  /*
-  sel.append("text")
-    .attr("class", "expand-label")
-    .attr("transform", "translate(0, " + (-1.1 * outerR) + ")")
-    .attr("opacity", 0)
-    .text(function(d) { return d.nodes.length > 1 ? "Expand x" + d.nodes.length : ""; });
-  */
-
   // Circle for showing usage detail.
-  sel.append("circle")
+  capacityG.append("circle")
     .style("opacity", 0)
     .attr("r", outerR + arcWidth * 4)
     .on("mouseover", function(d) {
@@ -227,12 +227,31 @@ Localities.prototype.locality = function(model, sel) {
     });
 
   // Circle for showing inter-locality network links.
-  sel.append("circle")
+  capacityG.append("circle")
     .style("opacity", 0)
     .attr("r", innerR - arcWidth * 2)
     .style("cursor", "pointer")
     .on("mouseover", function(d) { showLocalityLinks(model, d); })
     .on("mouseout", function(d) { hideLocalityLinks(model, d); });
+
+  // The latency-centric, simplified locality group.
+  var latencyR = innerR / 2,
+      latencyG = sel.append("g")
+      .attr("class", "latency-centric")
+      .attr("visibility", "hidden");
+  latencyG.append("circle")
+    .attr("class", "capacity-background")
+    .attr("r", latencyR)
+  latencyG.append("text")
+    .attr("class", "capacity-used-pct-label");
+  latencyG.append("path")
+    .attr("transform", "translate(-" + latencyR * 2 + "," + (latencyR + 2) + ")")
+    .attr("d", function(d) { return drawBox(latencyR * 4, 18, 0.05); })
+    .attr("class", "locality-label-background")
+  latencyG.append("text")
+    .attr("class", "locality-label")
+    .attr("y", latencyR + 12)
+    .text(function(d) { return d.name; });
 }
 
 Localities.prototype.localityLink = function(model, sel) {

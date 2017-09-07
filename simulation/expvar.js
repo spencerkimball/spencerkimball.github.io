@@ -1,7 +1,7 @@
 function ExpVar(halfLife) {
   if (halfLife == null) {
-    // Default half life to 10s */
-    this.halfLife = 10 * 1000;
+    // Default half life to 5s */
+    this.halfLife = 5 * 1000;
   } else {
     this.halfLife = halfLife;
   }
@@ -22,5 +22,5 @@ ExpVar.prototype.getValue = function() {
   if (deltaTime >= this.halfLife) {
     return this.value = 0;
   }
-  return (this.value * Math.exp(-deltaTime / this.halfLife)) / 10;
+  return (this.value * Math.exp(-deltaTime / this.halfLife)) / 5;
 }

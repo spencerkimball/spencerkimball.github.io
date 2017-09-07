@@ -79,7 +79,11 @@ Database.prototype.underReplicated = function() {
       var rng = this.tables[i].ranges[j];
       for (var k = 0; k < rng.replicas.length; k++) {
         if (rng.replicas[k].roachNode.down()) {
-          total += rng.quorumSize() - rng.replicas[k].getSize(false);
+          var quorum = rng.quorumSize(),
+              size = rng.replicas[k].getSize(false);
+          if (quorum > size) {
+            total += quorum - size;
+          }
         }
       }
     }

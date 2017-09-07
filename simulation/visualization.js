@@ -3,6 +3,8 @@
 
 var viewWidth = 960, viewHeight = 500;
 var timeScale = 2; // multiple for slowing down (< 1) or speeding up (> 1) animations
+var globalWorld = [];
+var globalCities = [];
 var color = d3.scale.category20();
 
 function addModel(model) {
@@ -29,6 +31,7 @@ function addModel(model) {
     .attr("viewBox", "0 0 " + model.width + " " + model.height)
     .classed("model-content-responsive", true);
 
+  model.populationScale = d3.scale.sqrt();
   if (model.projection) {
     layoutProjection(model);
   }
@@ -84,8 +87,16 @@ function addModel(model) {
 
   model.layout();
 
+  var button = div.append("button")
+      .attr("class", "button")
+      .attr("id", "show-latencies")
+      .on("click", function() { toggleLatenciesByCity(model); })
+      .style("vertical-align", "middle")
+      .append("span")
+      .html("Show Latencies by City");
+
   if (model.enableAddNodeAndApp) {
-    row = div.append("table")
+    var row = div.append("table")
       .attr("width", "100%")
       .append("tr");
     for (var i = 0; i < model.datacenters.length; i++) {
@@ -213,6 +224,54 @@ function layoutProjection(model) {
 
       model.worldG.selectAll("path").attr("d", pathGen);
 
+      if (model.showLatencies) {
+        var peoplePerPixel = 2000000000 / (s * s),
+            peopleMax = model.populationScale.domain()[1],
+            rMin = 0,
+            rMax = Math.sqrt(peopleMax / (peoplePerPixel * Math.PI)),
+            domain = [d3.min(globalCities, function(d) { return d3.min(model.localityLatencies(d)); }),
+                      d3.max(globalCities, function(d) { return d3.max(model.localityLatencies(d)); })],
+            step = d3.scale.linear().domain([1,11]).range(domain),
+            colorScale = d3.scale.linear().domain([step(1), step(2), step(3), step(4), step(5), step(6), step(7), step(8), step(9), step(10), step(11)])
+            .interpolate(d3.interpolateHcl)
+            .range(["#ff0000","#ff4e00","#ffb000","#eccc00","#91cc00","#36cc00","#00cc7f","#00b2cc","#0033cc","#5a00cc","#0000ff"]);
+        model.populationScale.range([rMin, rMax]);
+
+        minAvailable = function(latencies) {
+          var min = domain[1];
+          for (var i = 0; i < latencies.length; i++) {
+            if (model.localities[i].state() != "unavailable" && latencies[i] < min) {
+              min = latencies[i];
+            }
+          }
+          return min;
+        }
+
+        var citiesSel = model.projectionG.selectAll(".city");
+        citiesSel.attr("transform", function(d) {
+            var coords = model.projection([d.longitude, d.latitude]);
+            return "translate(" + coords[0] + "," + coords[1] + ")";
+        });
+        citiesSel.selectAll("text")
+          .attr("x", function(d) { return model.populationScale(d.population); });
+        citiesSel.selectAll(".population")
+          .attr("r", function(d) { return model.populationScale(d.population); })
+          .style("fill", function(d) { return colorScale(minAvailable(model.localityLatencies(d))); })
+          .on("click", function(d) {
+            if (model.showCityDetail != d.name) {
+              model.showCityDetail = d.name;
+            } else {
+              model.showCityDetail = null;
+            }
+            setLocalitiesVisibility(model);
+          })
+          .on("mouseover", function(d) {
+            var latency = minAvailable(model.localityLatencies(d));
+          })
+          .on("mouseout", function(d) {
+          });
+      }
+
       // Draw US states if they intersect our viewable area.
       var usB = [model.projection(usStatesBounds[0]), model.projection(usStatesBounds[1])];
       var usScale = (usB[1][1] - usB[0][1]) / model.width;
@@ -230,6 +289,8 @@ function layoutProjection(model) {
       // Fade out geographic projection when approaching max scale.
       model.projectionG
         .style("opacity", 1 - s / maxScale);
+
+      setLocalitiesVisibility(model);
 
       model.redraw();
     });
@@ -251,8 +312,9 @@ function layoutProjection(model) {
   model.worldG = model.projectionG.append("g");
   d3.json("https://spencerkimball.github.io/simulation/world.json", function(error, collection) {
     if (error) throw error;
+    globalWorld = collection.features;
     model.worldG.selectAll("path")
-      .data(collection.features)
+      .data(globalWorld)
       .enter().append("path")
       .attr("class", "geopath");
     model.projectionG.call(model.zoom.event);
@@ -268,15 +330,49 @@ function layoutProjection(model) {
     model.projectionG.call(model.zoom.event);
   });
 
-  d3.json("https://spencerkimball.github.io/simulation/cities100000.json", function(error, collection) {
-    if (error) throw error;
-    console.log(collection.features);
-    //model.citiesG.selectAll("circle")
-      //.data(collection.features
-  });
-
   model.projection.scale(model.maxScale);
   zoomToLocality(model, 0, [], false);
+}
+
+function toggleLatenciesByCity(model) {
+  if (globalWorld.length == 0) {
+    alert("Because geographic features could not be loaded, latencies by city population cannot be modeled.");
+    return;
+  }
+  model.showLatencies = !model.showLatencies;
+  if (model.showLatencies && globalCities.length == 0) {
+    d3.json("https://spencerkimball.github.io/simulation/cities100000.json", function(error, collection) {
+      if (error) throw error;
+      globalCities = collection;
+
+      model.populationScale.domain([0, d3.max(globalCities, function(d) { return d.population; })]);
+      var citiesG = model.projectionG.selectAll("g")
+          .data(globalCities)
+          .enter().append("g")
+          .attr("class", "city");
+      citiesG.append("circle")
+        .attr("class", "population");
+      citiesG.append("text")
+        .text(function(d) { return d.name; });
+
+      /*
+      var citiesTooltipSel = citiesSel.append("g")
+          .attr("class", "city-tooltip");
+      citiesTooltipSel.append("path")
+        .attr("d", function(d) { return drawBox(100, 100, 0.02); })
+        .attr("class", "tooltip background")
+      citiesTooltipSel.append("text")
+        .text(function(d) { return d.name; });
+        */
+
+      model.projectionG.call(model.zoom.event);
+    });
+  } else {
+    model.projectionG.call(model.zoom.event);
+  }
+
+  var div = d3.select("#" + model.id);
+  div.select("#show-latencies").select("span").html(model.showLatencies ? "Show Capacity Utilization" : "Show Latencies by City");
 }
 
 function removeModel(model) {
@@ -464,6 +560,7 @@ function layoutModel(model) {
 function refreshModel(model) {
   if (model.svg == null) return;
 
+  model.projectionG.call(model.zoom.event);
   model.skin.update(model);
 
   model.localityRowSel.selectAll("td")
