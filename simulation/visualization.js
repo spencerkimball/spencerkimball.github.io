@@ -228,14 +228,29 @@ function layoutProjection(model) {
         var peoplePerPixel = 2000000000 / (s * s),
             peopleMax = model.populationScale.domain()[1],
             rMin = 0,
-            rMax = Math.sqrt(peopleMax / (peoplePerPixel * Math.PI)),
-            domain = [d3.min(globalCities, function(d) { return d3.min(model.localityLatencies(d)); }),
+            rMax = Math.sqrt(peopleMax / (peoplePerPixel * Math.PI));
+        model.populationScale.range([rMin, rMax]);
+
+        var domain = [d3.min(globalCities, function(d) { return d3.min(model.localityLatencies(d)); }),
                       d3.max(globalCities, function(d) { return d3.max(model.localityLatencies(d)); })],
             step = d3.scale.linear().domain([1,11]).range(domain),
+            latencyScale = d3.scale.linear().range([0, viewWidth / 3]).domain(domain),
             colorScale = d3.scale.linear().domain([step(1), step(2), step(3), step(4), step(5), step(6), step(7), step(8), step(9), step(10), step(11)])
             .interpolate(d3.interpolateHcl)
             .range(["#ff0000","#ff4e00","#ffb000","#eccc00","#91cc00","#36cc00","#00cc7f","#00b2cc","#0033cc","#5a00cc","#0000ff"]);
-        model.populationScale.range([rMin, rMax]);
+
+        model.latencyLegend.scale(latencyScale)
+          .tickSize(1, 2)
+          .ticks(11)
+          .tickFormat(d => d + " ms");
+        model.svgParent.select(".latency-legend")
+          .call(model.latencyLegend)
+          .selectAll("text")
+          .attr("y", -20)
+          .attr("x", -7)
+          .attr("dy", ".35em")
+          .attr("transform", "translate(0,30)rotate(-45)")
+          .style("text-anchor", "start");
 
         minAvailable = function(latencies) {
           var min = domain[1];
@@ -355,15 +370,10 @@ function toggleLatenciesByCity(model) {
       citiesG.append("text")
         .text(function(d) { return d.name; });
 
-      /*
-      var citiesTooltipSel = citiesSel.append("g")
-          .attr("class", "city-tooltip");
-      citiesTooltipSel.append("path")
-        .attr("d", function(d) { return drawBox(100, 100, 0.02); })
-        .attr("class", "tooltip background")
-      citiesTooltipSel.append("text")
-        .text(function(d) { return d.name; });
-        */
+      model.latencyLegend = d3.svg.axis().orient("bottom");
+      model.svgParent.append("g")
+        .attr("class", "latency-legend")
+        .attr("transform", "translate(30," + (viewHeight - 30) + ")");
 
       model.projectionG.call(model.zoom.event);
     });

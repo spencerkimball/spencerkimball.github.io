@@ -90,6 +90,8 @@ function setLocalitiesVisibility(model) {
     .attr("visibility", capacityVisibility);
   model.svgParent.selectAll(".latency-centric")
     .attr("visibility", latencyVisibility);
+  model.svgParent.selectAll(".latency-legend")
+    .attr("visibility", latencyVisibility);
   model.projectionG.selectAll(".city")
     .attr("visibility", function(d) {
       if (model.showCityDetail != null) {

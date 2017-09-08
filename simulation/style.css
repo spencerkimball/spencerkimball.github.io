@@ -466,3 +466,13 @@ body {
     opacity: 1;
     right: 0;
 }
+
+.latency-legend {
+    stroke: #000;
+    stroke-width: 0.5px;
+    fill: none;
+}
+
+.latency-legend text {
+    font-size: 8px;
+}
