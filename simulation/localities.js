@@ -93,12 +93,13 @@ function setLocalitiesVisibility(model) {
   model.svgParent.selectAll(".latency-legend")
     .attr("visibility", latencyVisibility);
   model.projectionG.selectAll(".city")
-    .attr("visibility", function(d) {
+    .attr("opacity", function(d) {
       if (model.showCityDetail != null) {
-        return (model.showCityDetail == d.name) ? "visible" : "hidden";
+        return (model.showCityDetail == d.name) ? 1.0 : 0.15;
       }
-      return latencyVisibility;
-    });
+      return 1.0;
+    })
+    .attr("visibility", latencyVisibility);
 }
 
 function Localities() {

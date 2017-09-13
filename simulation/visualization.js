@@ -5,6 +5,8 @@ var viewWidth = 960, viewHeight = 500;
 var timeScale = 2; // multiple for slowing down (< 1) or speeding up (> 1) animations
 var globalWorld = [];
 var globalCities = [];
+//var latencyColors = ["#ff0000","#ff4e00","#ffb000","#eccc00","#91cc00","#36cc00","#00cc7f","#00b2cc","#0033cc","#5a00cc","#0000ff"];
+var latencyColors = ["#0000ff","#5a00cc","#0033cc","#00b2cc","#00cc7f","#36cc00","#91cc00","#eccc00","#ffb000","#ff4e00","#ff0000"];
 var color = d3.scale.category20();
 
 function addModel(model) {
@@ -230,27 +232,30 @@ function layoutProjection(model) {
             rMin = 0,
             rMax = Math.sqrt(peopleMax / (peoplePerPixel * Math.PI));
         model.populationScale.range([rMin, rMax]);
-
-        var domain = [d3.min(globalCities, function(d) { return d3.min(model.localityLatencies(d)); }),
-                      d3.max(globalCities, function(d) { return d3.max(model.localityLatencies(d)); })],
-            step = d3.scale.linear().domain([1,11]).range(domain),
+        var domain = [d3.min(model.filteredCities, function(d) { return d3.min(model.localityLatencies(d)); }),
+                      d3.max(model.filteredCities, function(d) { return d3.max(model.localityLatencies(d)); })],
+            step = d3.scale.linear().domain([1,latencyColors.length]).range(domain),
             latencyScale = d3.scale.linear().range([0, viewWidth / 3]).domain(domain),
             colorScale = d3.scale.linear().domain([step(1), step(2), step(3), step(4), step(5), step(6), step(7), step(8), step(9), step(10), step(11)])
             .interpolate(d3.interpolateHcl)
-            .range(["#ff0000","#ff4e00","#ffb000","#eccc00","#91cc00","#36cc00","#00cc7f","#00b2cc","#0033cc","#5a00cc","#0000ff"]);
+            .range(latencyColors),
+            legend = model.svgParent.select(".latency-legend");
 
         model.latencyLegend.scale(latencyScale)
-          .tickSize(1, 2)
+          .tickSize(2, 2)
           .ticks(11)
           .tickFormat(d => d + " ms");
-        model.svgParent.select(".latency-legend")
-          .call(model.latencyLegend)
+        legend.call(model.latencyLegend)
           .selectAll("text")
           .attr("y", -20)
           .attr("x", -7)
           .attr("dy", ".35em")
           .attr("transform", "translate(0,30)rotate(-45)")
           .style("text-anchor", "start");
+        legend.select("rect")
+          .attr("transform", "translate(0, -10)")
+          .attr("width", latencyScale.range()[1])
+          .attr("height", 10);
 
         minAvailable = function(latencies) {
           var min = domain[1];
@@ -360,7 +365,10 @@ function toggleLatenciesByCity(model) {
       if (error) throw error;
       globalCities = collection;
 
+      // TODO(spencer): all below won't work if there are multiple models on the same page.
       model.populationScale.domain([0, d3.max(globalCities, function(d) { return d.population; })]);
+      model.filteredCities = model.filterCities(globalCities);
+
       var citiesG = model.projectionG.selectAll("g")
           .data(globalCities)
           .enter().append("g")
@@ -371,9 +379,23 @@ function toggleLatenciesByCity(model) {
         .text(function(d) { return d.name; });
 
       model.latencyLegend = d3.svg.axis().orient("bottom");
-      model.svgParent.append("g")
-        .attr("class", "latency-legend")
-        .attr("transform", "translate(30," + (viewHeight - 30) + ")");
+      var latencyG = model.svgParent.append("g")
+          .attr("class", "latency-legend")
+          .attr("transform", "translate(30," + (viewHeight - 30) + ")"),
+          latencyGradient = latencyG.append("defs").append("svg:linearGradient")
+          .attr("id", "latency-gradient")
+          .attr("x1", "0%")
+          .attr("y1", "100%")
+          .attr("x2", "100%")
+          .attr("y2", "100%")
+          .attr("spreadMethod", "pad");
+      latencyG.append("rect")
+        .style("fill", "url(#latency-gradient)");
+
+      for (var i = 0; i < latencyColors.length; i++) {
+        var offset = i * (100 / (latencyColors.length - 1));
+        latencyGradient.append("stop").attr("offset", offset + "%").attr("stop-color", latencyColors[i]).attr("stop-opacity", 1);
+      }
 
       model.projectionG.call(model.zoom.event);
     });

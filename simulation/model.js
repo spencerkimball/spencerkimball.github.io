@@ -85,6 +85,18 @@ Model.prototype.bounds = function() {
   return [locXYMin, locXYMax];
 }
 
+// filterCities returns an array of cities which fall within the
+// bounds of the model.
+Model.prototype.filterCities = function(cities) {
+  var bounds = this.bounds();
+  return cities.filter(function(c) {
+    return c.longitude - bounds[0][0] > -15 &&
+      c.longitude - bounds[1][0] < 15 &&
+      c.latitude - bounds[0][1] < 15 &&
+      c.latitude - bounds[1][1] > -15;
+  });
+}
+
 Model.prototype.setLocality = function(locality) {
   this.currentLocality = locality;
   this.resetLocalities();
@@ -140,8 +152,24 @@ Model.prototype.selectNodes = function(locality) {
   return nodes;
 }
 
+function deg2rad(deg) {
+  return deg * (Math.PI/180)
+}
+
+function latLonDistanceKM(coords, oCoords) {
+  var R = 6371; // Radius of the earth in km
+  var dLat = deg2rad(oCoords[1]-coords[1]);  // deg2rad below
+  var dLon = deg2rad(oCoords[0]-coords[0]);
+  var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(deg2rad(coords[1])) * Math.cos(deg2rad(oCoords[1])) *
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  var d = R * c; // Distance in km
+  return d;
+}
+
 Model.prototype.latency = function(coords, oCoords) {
-  return 5 + 80000 * distance(coords, oCoords) / (viewWidth * this.projection.scale());
+  return 5 + 0.01521298174 * latLonDistanceKM(coords, oCoords);
 }
 
 // localityLatencies computes the latencies from the city's location
@@ -152,9 +180,7 @@ Model.prototype.localityLatencies = function(city) {
   if (city.latencies == null) {
     city.latencies = [];
     for (var i = 0; i < this.localities.length; i++) {
-      city.latencies.push(this.latency(
-        this.projection(this.localities[i].location),
-        this.projection([city.longitude, city.latitude])));
+      city.latencies.push(this.latency(this.localities[i].location, [city.longitude, city.latitude]));
     }
   }
   return city.latencies;
@@ -162,11 +188,9 @@ Model.prototype.localityLatencies = function(city) {
 
 Model.prototype.addNode = function(node) {
   // Link this node to all others.
-  var coords = this.projection(node.location);
   for (var i = 0; i < this.roachNodes.length; i++) {
     var oNode = this.roachNodes[i];
-    var oCoords = this.projection(oNode.location);
-    var latency = this.latency(coords, oCoords);
+    var latency = this.latency(node.location, oNode.location);
     var l = new Link(node, oNode, "route", latency, this);
     node.routes[oNode.id] = l;
     var rl = new Link(oNode, node, "route", latency, this);
