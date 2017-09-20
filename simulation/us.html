@@ -11,6 +11,7 @@
   <script src="d3-shape.v1.min.js"></script>
   <script src="database.js"></script>
   <script src="expvar.js"></script>
+  <script src="facility.js"></script>
   <script src="model.js"></script>
   <script src="link.js"></script>
   <script src="locality.js"></script>
@@ -61,61 +62,15 @@ function initModel(model) {
   model.displaySimState = false;
 
   // Facilities.
-  var Facilities = [
-    {
-      name: "New York City",
-      location: [-74.0059, 40.7128],
-      locality: ["city=New York City"],
-      racks: 1,
-      nodes_per_rack: 4,
-    },
-    {
-      name: "Miami",
-      location: [-80.1918, 25.7617],
-      locality: ["city=Miami"],
-      racks: 1,
-      nodes_per_rack: 4,
-    },
-    {
-      name: "Des Moines",
-      location: [-93.6091, 41.6005],
-      locality: ["city=Des Moines"],
-      racks: 2,
-      nodes_per_rack: 4,
-    },
-    {
-      name: "Mountain View",
-      location: [-122.0839, 37.3861],
-      locality: ["city=Mountain View"],
-      racks: 1,
-      nodes_per_rack: 4,
-    },
-    {
-      name: "Seattle",
-      location: [-122.3321, 47.6062],
-      locality: ["city=Seattle"],
-      racks: 1,
-      nodes_per_rack: 4,
-    },
-  ];
-
-  // Add racks and nodes for each facility.
-  for (var i = 0; i < Facilities.length; i++) {
-    var facility = Facilities[i];
-    for (var k = 0; k < facility.racks; k++) {
-      for (var l = 0; l < facility.nodes_per_rack; l++) {
-        var locality = facility.locality.slice(0);
-        if (facility.racks > 1) {
-          locality.push("rack=rack " + k);
-        }
-        new RoachNode("10.10." + (k + 1) + "." + (l + 1), facility.location, locality, model);
-      }
-    }
-  }
+  new Facility("New York City", ["city=New York City"], 1, 4, model);
+  new Facility("Miami", ["city=Miami"], 1, 4, model);
+  new Facility("Des Moines", ["city=Des Moines"], 2, 4, model);
+  new Facility("Los Angeles", ["city=Los Angeles"], 1, 4, model);
+  new Facility("Seattle", ["city=Seattle"], 1, 4, model);
 
   // Create tables, with a mix of spanning and local zone configs.
 
-  var usSpanningConfig = [["city=Seattle"], ["city=Mountain View"], ["city=Des Moines"], ["city=Miami"], ["city=New York City"]];
+  var usSpanningConfig = [["city=Seattle"], ["city=Los Angeles"], ["city=Des Moines"], ["city=Miami"], ["city=New York City"]];
   var usSalesDB = new Database("US Sales", model);
   var app1T1 = new Table("app1.customer", usSpanningConfig, model.splitSize * 1, usSalesDB, model);
   var app1T2 = new Table("app1.item", usSpanningConfig, model.splitSize * 2, usSalesDB, model);
@@ -133,7 +88,7 @@ function initModel(model) {
     new App(["*"], [app2T1, app2T2, app2T3], model);
   }
 
-  var westConfig = [["city=Seattle"], ["city=Mountain View"], ["city=Des Moines"]];
+  var westConfig = [["city=Seattle"], ["city=Los Angeles"], ["city=Des Moines"]];
   var westCustomerDB = new Database("West Coast Customers", model);
   var app3T1 = new Table("app3.customer", westConfig, model.splitSize * 2, westCustomerDB, model);
   var app3T2 = new Table("app3.item", westConfig, model.splitSize * 2, westCustomerDB, model);

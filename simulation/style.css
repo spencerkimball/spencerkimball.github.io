@@ -202,11 +202,13 @@ body {
 
 .latency-centric .capacity-background {
     opacity: 0.75;
+    stroke: #152849;
+    stroke-width: 1px;
     pointer-events: none;
 }
 
 .latency-centric .capacity-used-pct-label {
-    fill: #51bbfd;
+    fill: #152849;
     stroke-width: 0px;
     font-size: 12px;
     font-weight: bold;

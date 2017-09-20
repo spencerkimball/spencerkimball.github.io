@@ -27,6 +27,7 @@ function Model(id, width, height, initFn) {
   this.databasesByName = {};
   this.databaseCount = 0;
   this.apps = [];
+  this.facilities = [];
   this.reqCount = 0;
   this.rangeCount = 0;
   this.links = [];
@@ -111,6 +112,10 @@ Model.prototype.addLocality = function(locality) {
 
   // Add to array of datacenters.
   this.localities.push(locality);
+}
+
+Model.prototype.addFacility = function(facility) {
+  this.facilities.push(facility);
 }
 
 // findMatchingNodes finds and returns a list of nodes which match the
@@ -413,13 +418,13 @@ function dotprod(v1, v2) {
 Model.prototype.computeLocalityScale = function() {
   var scale = 1,
       maxDistance = this.skin.maxRadius(this) * 2;
+  for (var i = 0; i < this.localities.length; i++) {
+    this.localities[i].pos = this.projection(this.localities[i].location);
+  }
+
   for (var i = 0; i < this.localityLinks.length; i++) {
     var link = this.localityLinks[i],
-        l1 = this.projection(link.l1.location),
-        l2 = this.projection(link.l2.location),
-        d = distance(l1, l2);
-    link.l1.pos = l1;
-    link.l2.pos = l2;
+        d = distance(link.l1.pos, link.l2.pos);
     if (d < maxDistance) {
       var newScale = d / maxDistance;
       if (newScale < scale) {

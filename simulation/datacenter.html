@@ -11,6 +11,7 @@
   <script src="d3-shape.v1.min.js"></script>
   <script src="database.js"></script>
   <script src="expvar.js"></script>
+  <script src="facility.js"></script>
   <script src="model.js"></script>
   <script src="link.js"></script>
   <script src="locality.js"></script>
@@ -61,29 +62,7 @@ function initModel(model) {
   model.displaySimState = false;
 
   // Facilities.
-  var Facilities = [
-    {
-      name: "Atlanta",
-      location: [-84.3880, 33.7490],
-      locality: [],
-      racks: 3,
-      nodes_per_rack: 6,
-    },
-  ];
-
-  // Add racks and nodes for each facility.
-  for (var i = 0; i < Facilities.length; i++) {
-    var facility = Facilities[i];
-    for (var k = 0; k < facility.racks; k++) {
-      for (var l = 0; l < facility.nodes_per_rack; l++) {
-        var locality = facility.locality.slice(0);
-        if (facility.racks > 1) {
-          locality.push("rack=rack " + k);
-        }
-        new RoachNode("10.10." + (k + 1) + "." + (l + 1), facility.location, locality, model);
-      }
-    }
-  }
+  new Facility("Atlanta", [], 3, 6, model);
 
   // Create tables, with a mix of spanning and local zone configs.
 

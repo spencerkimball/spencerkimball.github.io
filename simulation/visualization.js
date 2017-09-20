@@ -4,10 +4,19 @@
 var viewWidth = 960, viewHeight = 500;
 var timeScale = 2; // multiple for slowing down (< 1) or speeding up (> 1) animations
 var globalWorld = [];
+var populationScale = d3.scale.sqrt();
 var globalCities = [];
+var globalCityMap = {};
 //var latencyColors = ["#ff0000","#ff4e00","#ffb000","#eccc00","#91cc00","#36cc00","#00cc7f","#00b2cc","#0033cc","#5a00cc","#0000ff"];
 var latencyColors = ["#0000ff","#5a00cc","#0033cc","#00b2cc","#00cc7f","#36cc00","#91cc00","#eccc00","#ffb000","#ff4e00","#ff0000"];
 var color = d3.scale.category20();
+
+function lookupCityLocation(name) {
+  if (name in globalCityMap) {
+    return [globalCityMap[name].longitude, globalCityMap[name].latitude];
+  }
+  return [0, 0];
+}
 
 function addModel(model) {
   window.onpopstate = function(event) {
@@ -33,7 +42,6 @@ function addModel(model) {
     .attr("viewBox", "0 0 " + model.width + " " + model.height)
     .classed("model-content-responsive", true);
 
-  model.populationScale = d3.scale.sqrt();
   if (model.projection) {
     layoutProjection(model);
   }
@@ -95,7 +103,7 @@ function addModel(model) {
       .on("click", function() { toggleLatenciesByCity(model); })
       .style("vertical-align", "middle")
       .append("span")
-      .html("Show Latencies by City");
+      .html("Show Customer Latencies");
 
   if (model.enableAddNodeAndApp) {
     var row = div.append("table")
@@ -228,10 +236,10 @@ function layoutProjection(model) {
 
       if (model.showLatencies) {
         var peoplePerPixel = 2000000000 / (s * s),
-            peopleMax = model.populationScale.domain()[1],
+            peopleMax = populationScale.domain()[1],
             rMin = 0,
             rMax = Math.sqrt(peopleMax / (peoplePerPixel * Math.PI));
-        model.populationScale.range([rMin, rMax]);
+        populationScale.range([rMin, rMax]);
         var domain = [d3.min(model.filteredCities, function(d) { return d3.min(model.localityLatencies(d)); }),
                       d3.max(model.filteredCities, function(d) { return d3.max(model.localityLatencies(d)); })],
             step = d3.scale.linear().domain([1,latencyColors.length]).range(domain),
@@ -273,9 +281,9 @@ function layoutProjection(model) {
             return "translate(" + coords[0] + "," + coords[1] + ")";
         });
         citiesSel.selectAll("text")
-          .attr("x", function(d) { return model.populationScale(d.population); });
+          .attr("x", function(d) { return populationScale(d.population); });
         citiesSel.selectAll(".population")
-          .attr("r", function(d) { return model.populationScale(d.population); })
+          .attr("r", function(d) { return populationScale(d.population); })
           .style("fill", function(d) { return colorScale(minAvailable(model.localityLatencies(d))); })
           .on("click", function(d) {
             if (model.showCityDetail != d.name) {
@@ -350,61 +358,73 @@ function layoutProjection(model) {
     model.projectionG.call(model.zoom.event);
   });
 
+  d3.json("https://spencerkimball.github.io/simulation/cities100000.json", function(error, collection) {
+    if (error) throw error;
+    globalCities = collection;
+    for (var i = 0; i < globalCities.length; i++) {
+      var city = globalCities[i];
+      if (!(city.name in globalCityMap) || city.population > globalCityMap[city.name].population) {
+        globalCityMap[city.name] = city;
+      }
+    }
+    populationScale.domain([0, d3.max(globalCities, function(d) { return d.population; })]);
+
+    var updated = false;
+    for (var i = 0; i < model.facilities.length; i++) {
+      updated = model.facilities[i].updateLocation() || updated;
+    }
+    if (updated) {
+      zoomToLocality(model, 0, model.currentLocality, false);
+    }
+    model.projectionG.call(model.zoom.event);
+  });
+
   model.projection.scale(model.maxScale);
   zoomToLocality(model, 0, [], false);
 }
 
 function toggleLatenciesByCity(model) {
-  if (globalWorld.length == 0) {
-    alert("Because geographic features could not be loaded, latencies by city population cannot be modeled.");
+  if (globalCities.length == 0) {
+    alert("Because per city stats could not be loaded, latencies and city populations cannot be modeled.");
     return;
   }
+
   model.showLatencies = !model.showLatencies;
-  if (model.showLatencies && globalCities.length == 0) {
-    d3.json("https://spencerkimball.github.io/simulation/cities100000.json", function(error, collection) {
-      if (error) throw error;
-      globalCities = collection;
 
-      // TODO(spencer): all below won't work if there are multiple models on the same page.
-      model.populationScale.domain([0, d3.max(globalCities, function(d) { return d.population; })]);
-      model.filteredCities = model.filterCities(globalCities);
+  if (model.showLatencies && model.filteredCities == null) {
+    model.filteredCities = model.filterCities(globalCities);
+    var citiesG = model.projectionG.selectAll("g")
+        .data(globalCities)
+        .enter().append("g")
+        .attr("class", "city");
+    citiesG.append("circle")
+      .attr("class", "population");
+    citiesG.append("text")
+      .text(function(d) { return d.name; });
 
-      var citiesG = model.projectionG.selectAll("g")
-          .data(globalCities)
-          .enter().append("g")
-          .attr("class", "city");
-      citiesG.append("circle")
-        .attr("class", "population");
-      citiesG.append("text")
-        .text(function(d) { return d.name; });
+    model.latencyLegend = d3.svg.axis().orient("bottom");
+    var latencyG = model.svgParent.append("g")
+        .attr("class", "latency-legend")
+        .attr("transform", "translate(30," + (viewHeight - 30) + ")"),
+        latencyGradient = latencyG.append("defs").append("svg:linearGradient")
+        .attr("id", "latency-gradient")
+        .attr("x1", "0%")
+        .attr("y1", "100%")
+        .attr("x2", "100%")
+        .attr("y2", "100%")
+        .attr("spreadMethod", "pad");
+    latencyG.append("rect")
+      .style("fill", "url(#latency-gradient)");
 
-      model.latencyLegend = d3.svg.axis().orient("bottom");
-      var latencyG = model.svgParent.append("g")
-          .attr("class", "latency-legend")
-          .attr("transform", "translate(30," + (viewHeight - 30) + ")"),
-          latencyGradient = latencyG.append("defs").append("svg:linearGradient")
-          .attr("id", "latency-gradient")
-          .attr("x1", "0%")
-          .attr("y1", "100%")
-          .attr("x2", "100%")
-          .attr("y2", "100%")
-          .attr("spreadMethod", "pad");
-      latencyG.append("rect")
-        .style("fill", "url(#latency-gradient)");
-
-      for (var i = 0; i < latencyColors.length; i++) {
-        var offset = i * (100 / (latencyColors.length - 1));
-        latencyGradient.append("stop").attr("offset", offset + "%").attr("stop-color", latencyColors[i]).attr("stop-opacity", 1);
-      }
-
-      model.projectionG.call(model.zoom.event);
-    });
-  } else {
-    model.projectionG.call(model.zoom.event);
+    for (var i = 0; i < latencyColors.length; i++) {
+      var offset = i * (100 / (latencyColors.length - 1));
+      latencyGradient.append("stop").attr("offset", offset + "%").attr("stop-color", latencyColors[i]).attr("stop-opacity", 1);
+    }
   }
+  model.projectionG.call(model.zoom.event);
 
   var div = d3.select("#" + model.id);
-  div.select("#show-latencies").select("span").html(model.showLatencies ? "Show Capacity Utilization" : "Show Latencies by City");
+  div.select("#show-latencies").select("span").html(model.showLatencies ? "Show Capacity Utilization" : "Show Customer Latencies");
 }
 
 function removeModel(model) {
@@ -592,7 +612,6 @@ function layoutModel(model) {
 function refreshModel(model) {
   if (model.svg == null) return;
 
-  model.projectionG.call(model.zoom.event);
   model.skin.update(model);
 
   model.localityRowSel.selectAll("td")
@@ -600,6 +619,8 @@ function refreshModel(model) {
 
   model.databaseRowSel.selectAll("td")
     .html(function(d) { return d.column.html(d.db); });
+
+  model.projectionG.call(model.zoom.event);
 }
 
 function setNodeHealthy(model, n) {
