@@ -346,26 +346,11 @@ function layoutProjection(model) {
   d3.json("https://spencerkimball.github.io/simulation/world.json", function(error, collection) {
     if (error) throw error;
     globalWorld = collection.features;
-    for (var i = 0; i < collection.features.length; i++) {
-      var a = collection.features[i].geometry.coordinates;
-      for (var k = 0; k < a.length; k++) {
-        var c = a[k];
-        for (var j = 0; j < c.length; j++) {
-          if (c[j][0] < 74.14097 && c[j][0] > 73.87097 &&
-              c[j][1] > 40.61186517405691 && c[j][1] < 40.81651755938639) {
-            console.log(c[j]);
-          }
-          if (Math.abs(c[j][0] - 74.14097) < 1 &&
-              Math.abs(c[j][1] - 40.61186517405691) < 1) {
-            console.log(c[j]);
-          }
-        }
-      }
-    }
     model.worldG.selectAll("path")
       .data(globalWorld)
       .enter().append("path")
-      .attr("class", "geopath");
+      .attr("class", "geopath")
+      .on("mouseover", function(d) {console.log("feature " + d.id);});
     model.projectionG.call(model.zoom.event);
   });
 
