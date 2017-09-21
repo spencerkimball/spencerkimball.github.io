@@ -14,6 +14,9 @@ var color = d3.scale.category20();
 function lookupCityLocation(name) {
   if (name in globalCityMap) {
     return [globalCityMap[name].longitude, globalCityMap[name].latitude];
+  } else if (globalCities.length > 0) {
+    alert("The deployment specifies a facility in city=\"" + name + "\", but the location of that city is unknown; using \"San Francisco\" as the location.");
+    return [globalCityMap["San Francisco"].longitude, globalCityMap["San Francisco"].latitude];
   }
   return [0, 0];
 }
@@ -167,12 +170,12 @@ function zoomToLocality(model, duration, locality, updateHistory) {
   var bounds = model.bounds(),
       scalex = findScale(bounds[0][0], bounds[1][0], model.width / (Math.PI / 180)),
       scaley = findScale(bounds[0][1], bounds[1][1], model.height / (Math.PI / 90)),
-      scale = Math.min(scalex, scaley),
+      scale = scalex == 0 ? scaley : (scaley == 0 ? scalex : Math.min(scalex, scaley)),
       needAdjust = false;
 
   if (scale == 0) {
     needAdjust = true;
-    scale = model.maxScale * Math.pow(5, locality.length);
+    scale = model.maxScale * Math.pow(4, locality.length);
   }
 
   // Compute the initial translation to center the deployed datacenters.
@@ -185,8 +188,10 @@ function zoomToLocality(model, duration, locality, updateHistory) {
   // display purposes.
   if (needAdjust) {
     for (var i = 0; i < model.localities.length; i++) {
-      model.localities[i].adjustLocation(i, model.localities.length, 0.2 * model.width)
+      model.localities[i].adjustLocation(i, model.localities.length, 0.15 * model.width)
     }
+    bounds = model.bounds();
+    console.log("post adjust bounds=" + bounds);
   }
 
   model.svgParent
@@ -308,15 +313,15 @@ function layoutProjection(model) {
         model.usStatesG.selectAll("path")
           .attr("d", pathGen);
         model.usStatesG
-          .style("opacity",  (usScale - 0.2) / (0.33333 - 0.2));
+        //.style("opacity",  (usScale - 0.2) / (0.33333 - 0.2));
+          .style("opacity",  0);
       } else {
         model.usStatesG
           .style("opacity", 0);
       }
 
       // Fade out geographic projection when approaching max scale.
-      model.projectionG
-        .style("opacity", 1 - s / maxScale);
+      model.projectionG.style("opacity", 1 - 0.5 * Math.min(1, (s / maxScale)));
 
       setLocalitiesVisibility(model);
 
@@ -341,6 +346,22 @@ function layoutProjection(model) {
   d3.json("https://spencerkimball.github.io/simulation/world.json", function(error, collection) {
     if (error) throw error;
     globalWorld = collection.features;
+    for (var i = 0; i < collection.features.length; i++) {
+      var a = collection.features[i].geometry.coordinates;
+      for (var k = 0; k < a.length; k++) {
+        var c = a[k];
+        for (var j = 0; j < c.length; j++) {
+          if (c[j][0] < 74.14097 && c[j][0] > 73.87097 &&
+              c[j][1] > 40.61186517405691 && c[j][1] < 40.81651755938639) {
+            console.log(c[j]);
+          }
+          if (Math.abs(c[j][0] - 74.14097) < 1 &&
+              Math.abs(c[j][1] - 40.61186517405691) < 1) {
+            console.log(c[j]);
+          }
+        }
+      }
+    }
     model.worldG.selectAll("path")
       .data(globalWorld)
       .enter().append("path")
