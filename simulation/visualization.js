@@ -312,7 +312,7 @@ function layoutProjection(model) {
         model.usStatesG.selectAll("path").attr("d", pathGen);
         var opacity = (usScale - 0.2) / (0.33333 - 0.2)
         model.usStatesG.style("opacity",  opacity);
-        model.projectionG.select("#world-840").style("opacity", 1 - opacity);
+        model.projectionG.select("#world-840").style("opacity", opacity < 1 ? 1 : 0);
       } else {
         model.usStatesG.style("opacity", 0);
         model.projectionG.select("#world-840").style("opacity", 1);
@@ -347,7 +347,8 @@ function layoutProjection(model) {
     model.worldG.selectAll("path")
       .data(globalWorld)
       .enter().append("path")
-      .attr("class", "geopath");
+      .attr("class", "geopath")
+      .attr("id", function(d) { return "world-" + d.id; });
     model.projectionG.call(model.zoom.event);
   });
 
@@ -357,8 +358,7 @@ function layoutProjection(model) {
     model.usStatesG.selectAll("path")
       .data(collection.features)
       .enter().append("path")
-      .attr("class", "geopath")
-      .attr("id", function(d) { return "world-" + d.id; });
+      .attr("class", "geopath");
     model.projectionG.call(model.zoom.event);
   });
 
