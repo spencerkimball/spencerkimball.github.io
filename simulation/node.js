@@ -13,12 +13,12 @@ function RoachNode(name, location, locality, model) {
   this.clazz = "roachnode";
   this.state = "healthy";
   this.replicas = [];
-  this.apps = [];
   this.children = this.replicas;
   this.routes = {};
   this.busy = false;
   // Set the replicas as the "children" array of the node in order to set
   // them up to be a packed layout.
+  this.appRoute = new Link(null, this, "route", 0, model);
   this.model = model;
 
   this.model.addNode(this);
@@ -26,10 +26,6 @@ function RoachNode(name, location, locality, model) {
 
 RoachNode.prototype.down = function() {
   return this.state != "healthy";
-}
-
-RoachNode.prototype.addApp = function(app) {
-  this.apps.push(app);
 }
 
 RoachNode.prototype.pctUsage = function(countLog) {
@@ -126,12 +122,7 @@ RoachNode.prototype.throughputByDB = function(throughputMap) {
 }
 
 RoachNode.prototype.clientActivity = function() {
-  var activity = 0;
-  for (var i = 0; i < this.apps.length; i++) {
-    var app = this.apps[i];
-    activity += app.routes[app.roachNode.id].getThroughput();
-  }
-  return activity;
+  return this.appRoute.getThroughput();
 }
 
 // networkActivity returns a tuple of values: [outgoing throughput,

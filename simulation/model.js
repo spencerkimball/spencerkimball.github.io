@@ -21,6 +21,7 @@ function Model(id, width, height, initFn) {
   this.maxAppXfer = 10000;       // in ms
   this.heartbeatInterval = 1500; // in ms
   this.periodicInterval = 2000;  // in ms
+  this.maxRequestsPerSecond = 10;
   this.roachNodes = [];
   this.tables = [];
   this.databases = [];
@@ -239,8 +240,6 @@ Model.prototype.addDatabase = function(db) {
 // requests directly from the gateway node they're connected to.
 Model.prototype.addApp = function(app) {
   this.apps.push(app);
-  app.roachNode.addApp(app);
-  app.routes[app.roachNode.id] = new Link(app, app.roachNode, "route", 0, this);;
 }
 
 Model.prototype.removeApp = function(app) {

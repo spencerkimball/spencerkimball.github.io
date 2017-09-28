@@ -54,17 +54,7 @@ Request.prototype.route = function(sourceNode, endFn) {
     this.process(true, endFn);
     return;
   }
-  if (destNode.id in sourceNode.routes) {
-    this.writeDirect(sourceNode, destNode, endFn);
-    return;
-  }
-  // App to app's node.
-  if (sourceNode.id.startsWith("app")) {
-    this.writeDirect(sourceNode, sourceNode.roachNode, endFn);
-    return;
-  }
-  // Uh oh.
-  console.log("ERROR: cannot route request from " + sourceNode.id + " to " + destNode.id);
+  this.writeDirect(sourceNode, destNode, endFn);
 }
 
 Request.prototype.writeDirect = function(sourceNode, targetNode, endFn) {
@@ -106,7 +96,6 @@ Request.prototype.writeDirect = function(sourceNode, targetNode, endFn) {
       route.record(that);
       return that.success;
     }
-    return true;
   })
 }
 

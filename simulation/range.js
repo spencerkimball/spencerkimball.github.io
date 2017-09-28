@@ -76,7 +76,11 @@ Range.prototype.flushLog = function() {
       var req = this.log[j];
       // If this replica did not have a request, send a new one.
       if (! (r.id in req.replicated)) {
-        this.forwardReqToReplica(req, r);
+        if (!this.forwardReqToReplica(req, r)) {
+          // Not enough bandwidth; skip for now.
+          //console.log(r.id + ": behind in log by " + (this.log.length - j) + " (" + j + "); not forwarding");
+          break;
+        }
         continue;
       }
       // Get request corresponding to this replica.
@@ -92,13 +96,14 @@ Range.prototype.flushLog = function() {
           count++;
         }
         continue;
-      } else if (r.roachNode.hasSpace(req.size(), false /* count log */)) {
+      } else if (r.roachNode.hasSpace(req.size(), false /* count log */) && r.canReceiveRequest()) {
         // Since the node is up and can handle the request, resend it.
         req.done = false;
-        var that = this;
+        var that = this,
+            thatReq = req;
         req.route(this.leader.roachNode, function() {
-          req.done = true;
-          req.success = true;
+          thatReq.done = true;
+          thatReq.success = true;
           that.flushLog();
           return true;
         })
@@ -229,9 +234,12 @@ Range.prototype.forwardReq = function(req) {
   }
 }
 
+// forwardReqToReplica checks available bandwidth for the request and
+// returns false if not enough is available. "Bandwidth" is measured
+// roughly, in requests per second.
 Range.prototype.forwardReqToReplica = function(req, replica) {
   // Skip if already forwarded.
-  if (replica.id in req.replicated || replica.splitting) {
+  if (replica.id in req.replicated || !replica.canReceiveRequest()) {
     return;
   }
   var forward = req.clone(replica);

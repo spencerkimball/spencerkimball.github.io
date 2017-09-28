@@ -312,6 +312,7 @@ function layoutProjection(model) {
         model.usStatesG.selectAll("path").attr("d", pathGen);
         var opacity = (usScale - 0.2) / (0.33333 - 0.2)
         model.usStatesG.style("opacity",  opacity);
+        // Set opacity for the considerably less detailed world map's version of the US.
         model.projectionG.select("#world-840").style("opacity", opacity < 1 ? 1 : 0);
       } else {
         model.usStatesG.style("opacity", 0);

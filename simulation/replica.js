@@ -11,6 +11,8 @@ function Replica(size, range, roachNode, add, model) {
   this.splitEpoch = 0;
   this.throughput = new ExpVar();
   this.stopped = true;
+  this.lastRequestTime = 0;
+  this.allotment = model.maxRequestsPerSecond;
   if (add) {
     this.roachNode.replicas.push(this);
     this.range.addReplica(this);
@@ -23,6 +25,22 @@ Replica.prototype.isLeader = function() {
 
 Replica.prototype.hasSpace = function(size, countLog) {
   return this.roachNode.hasSpace(size, countLog);
+}
+
+Replica.prototype.canReceiveRequest = function() {
+  if (this.splitting) {
+    return false;
+  }
+  var time = Date.now(),
+      deltaTime = (time - this.lastRequestTime) / 1000,
+      newAllotment = this.allotment + Math.floor(deltaTime * this.model.maxRequestsPerSecond);
+  this.lastRequestTime = time;
+  this.allotment = Math.min(this.model.maxRequestsPerSecond, newAllotment);
+  if (this.allotment > 0) {
+    this.allotment--;
+    return true;
+  }
+  return false;
 }
 
 Replica.prototype.getSize = function(countLog) {
