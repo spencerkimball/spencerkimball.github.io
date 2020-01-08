@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html>
+  <style> /* set the CSS */
+    body { font: 12px Arial;}
+    path {
+        stroke: steelblue;
+        stroke-width: 2;
+        fill: none;
+    }
+    .axis path,
+    .axis line {
+	fill: none;
+	stroke: grey;
+	stroke-width: 1;
+	shape-rendering: crispEdges;
+    }
+  </style>
+
+  <head>
+    <title>Google Calendar API Quickstart</title>
+    <meta charset="utf-8" />
+  </head>
+
+  <body>
+    <p>Calendar Meeting Analysis</p>
+
+    <!--Add buttons to initiate auth sequence and sign out-->
+    <button id="authorize_button" style="display: none;">Authorize</button>
+    <button id="signout_button" style="display: none;">Sign Out</button>
+
+    <p>
+      <span>Total meetings: </span><span id="events_label">0</span>
+      : <span>Total hours: </span><span id="hours_label">0</span>
+    </p>
+
+    <!-- load the d3.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
+    <script src="https://unpkg.com/moment"></script>
+
+    <script type="text/javascript">
+      // Client ID and API key from the Developer Console
+      var CLIENT_ID = '994454034918-tsps72ed225kfm1jeb9jh5p8sggfgn24.apps.googleusercontent.com';
+      var API_KEY = 'AIzaSyAvIIoWyEEc4cfcHfukDUDT0qcm89atGMo';
+
+      // Array of API discovery doc URLs for APIs used by the quickstart
+      var DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"];
+
+      // Authorization scopes required by the API; multiple scopes can be
+      // included, separated by spaces.
+      var SCOPES = "https://www.googleapis.com/auth/calendar.readonly";
+
+      var authorizeButton = document.getElementById('authorize_button');
+      var signoutButton = document.getElementById('signout_button');
+      var eventsLabel = document.getElementById('events_label');
+      var hoursLabel = document.getElementById('hours_label');
+      var eventCount = 0;
+      var hourCount = 0;
+      var weekData = [];
+      var curWeek = -1;
+      var timeSlots = null; // array of seven days x 96 15 minute time slots
+
+      const _MS_PER_HOUR = 1000 * 60 * 60,
+            _MS_PER_WEEK = _MS_PER_HOUR * 24 * 7;
+
+      function allocateTimeSlots() {
+        timeSlots = new Array(7);
+        for (var i = 0; i < 7; i++) {
+          timeSlots[i] = new Array(96);
+          for (var j = 0; j < 96; j++) {
+            timeSlots[i][j] = false;
+          }
+        }
+      }
+
+      /**
+       *  Returns an object containing date, count hours of
+       *  meetings, and count of any hour-length blocks of free time from
+       *  9a to 5p, * minus one hour for lunch each of the five work
+       *  days.
+       */
+      function countTimeSlots(timeMin) {
+        var slots = 0;
+        var freeSlots = 0;
+        var freeHours = 0;
+        for (var i = 1; i <= 5; i++) { // monday - friday
+          for (var j = 9 * 4; j < 17 * 4; j++) { // 9a - 5p
+            if (!timeSlots[i][j]) {
+              freeSlots++;
+            } else {
+              slots++;
+            }
+            if (timeSlots[i][j] || j == 17 * 4 - 1) {
+              if (freeSlots >= 4) {
+                freeHours += freeSlots / 4;
+              }
+              freeSlots = 0;
+            }
+          }
+        }
+        return {
+          date: new Date(timeMin + (_MS_PER_WEEK * curWeek)),
+          hours: Math.floor(slots / 4),
+          free: Math.max(0, freeHours - 5)
+        };
+      }
+
+      /**
+       *  Populates the time slots matrix with booleans indicating overlapping meetings.
+       */
+      function fillTimeSlots(start, end) {
+        // assumption here that meetings don't cross day boundaries
+        var day = start.getDay(),
+            startH = start.getHours(),
+            startM = start.getMinutes(),
+            endH = end.getHours(),
+            endM = end.getMinutes(),
+            startSlot = startH * 4 + Math.floor(startM / 15),
+            endSlot = endH * 4 + Math.ceil(endM / 15);
+        for (var i = startSlot; i < endSlot; i++) {
+          timeSlots[day][i] = true;
+        }
+      }
+
+      /**
+       *  On load, called to load the auth2 library and API client library.
+       */
+      function handleClientLoad() {
+        gapi.load('client:auth2', initClient);
+      }
+
+      /**
+       *  Initializes the API client library and sets up sign-in state
+       *  listeners.
+       */
+      function initClient() {
+        gapi.client.init({
+          apiKey: API_KEY,
+          clientId: CLIENT_ID,
+          discoveryDocs: DISCOVERY_DOCS,
+          scope: SCOPES
+        }).then(function () {
+          // Listen for sign-in state changes.
+          gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
+
+          // Handle the initial sign-in state.
+          updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+          authorizeButton.onclick = handleAuthClick;
+          signoutButton.onclick = handleSignoutClick;
+        }, function(error) {
+          appendPre(JSON.stringify(error, null, 2));
+        });
+      }
+
+      /**
+       *  Called when the signed in status changes, to update the UI
+       *  appropriately. After a sign-in, the API is called.
+       */
+      function updateSigninStatus(isSignedIn) {
+        if (isSignedIn) {
+          authorizeButton.style.display = 'none';
+          signoutButton.style.display = 'block';
+          fetchEvents();
+        } else {
+          authorizeButton.style.display = 'block';
+          signoutButton.style.display = 'none';
+        }
+      }
+
+      /**
+       *  Sign in the user upon button click.
+       */
+      function handleAuthClick(event) {
+        gapi.auth2.getAuthInstance().signIn();
+      }
+
+      /**
+       *  Sign out the user upon button click.
+       */
+      function handleSignoutClick(event) {
+        gapi.auth2.getAuthInstance().signOut();
+      }
+
+      function fetchEventsHelper(timeMin, timeMax, nextPageToken) {
+        gapi.client.calendar.events.list({
+          'calendarId': 'primary',
+          'showDeleted': false,
+          'singleEvents': true,
+          'orderBy': 'startTime',
+          'maxResults': 1000,
+          'timeMax': timeMax.toISOString(),
+          'pageToken': nextPageToken
+        }).then(function(response) {
+          var events = response.result.items;
+          eventCount += events.length;
+          eventsLabel.textContent = "" + eventCount;
+
+          if (events.length > 0) {
+            for (var i = 0; i < events.length; i++) {
+              var event = events[i],
+                  otherAttendees = false;
+              if (!event.attendees) {
+                continue;
+              }
+              // Check for multiple attendees; skip if user is sole attendee (assume personal time).
+              for (var j = 0; j < event.attendees.length; j++) {
+                if (!event.attendees[j].resource && !event.attendees[j].self) {
+                  otherAttendees = true;
+                  break;
+                }
+              }
+
+              var start = event.start.dateTime,
+                  end = event.end.dateTime;
+              if (start && end) {
+                var endDT = Date.parse(end),
+                    startDT = Date.parse(start);
+                if (!timeMin) {
+                  timeMin = startDT;
+                }
+                var week = Math.floor((startDT - timeMin) / _MS_PER_WEEK);
+                if (week != curWeek) {
+                  if (curWeek != -1) {
+                    weekData[curWeek] = countTimeSlots(timeMin);
+                    hourCount += weekData[curWeek].hours;
+                  }
+                  curWeek = week;
+                  allocateTimeSlots();
+                }
+                // Fill in time slots as busy if there are other attendees in the meeting.
+                if (otherAttendees) {
+                  fillTimeSlots(new Date(startDT), new Date(endDT));
+                }
+              }
+            }
+          }
+          hoursLabel.textContent = "" + Math.floor(hourCount);
+
+          if (response.result.nextPageToken) {
+            fetchEventsHelper(timeMin, timeMax, response.result.nextPageToken);
+            return;
+          }
+
+          weekData[curWeek] = countTimeSlots(timeMin);
+          displayGraph(timeMin);
+        });
+      }
+
+      function fetchEvents() {
+        fetchEventsHelper(null /* timeMin */, new Date() /* timeMax */, null /* nextPageToken */);
+      }
+
+
+      function displayGraph(timeMin) {
+        // Set the dimensions of the canvas / graph
+        var margin = {top: 30, right: 150, bottom: 100, left: 50},
+	    width = 1250 - margin.left - margin.right,
+	    height = 500 - margin.top - margin.bottom;
+        // Set the ranges
+        var x = d3.time.scale().range([0, width]);
+        var y = d3.scale.linear().range([height, 0]);
+
+        // Define the axes
+        var xAxis = d3.svg.axis().scale(x)
+	    .orient("bottom").ticks(12).tickFormat(d3.time.format("%b %Y"));
+        var yAxis = d3.svg.axis().scale(y)
+	    .orient("left").ticks(10);
+
+        // Define the lines
+        var valuelineHours = d3.svg.line()
+	    .x(function(d) { return x(d.date); })
+	    .y(function(d) { return y(d.hours); });
+        var valuelineFreeHours = d3.svg.line()
+	    .x(function(d) { return x(d.date); })
+	    .y(function(d) { return y(d.free); });
+
+        // Adds the svg canvas
+        var svg = d3.select("body")
+	    .append("svg")
+	    .attr("width", width + margin.left + margin.right)
+	    .attr("height", height + margin.top + margin.bottom)
+	    .append("g")
+	    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+	// Scale the range of the data
+        x.domain(d3.extent(weekData, function(d) { return d.date; }));
+	y.domain([0, 40]);
+
+	// Add the valueline paths.
+	svg.append("path")
+	  .attr("class", "line")
+          .attr("stroke", "blue")
+          .style("stroke-width", 0.5)
+	  .attr("d", valuelineHours(weekData));
+	svg.append("path")
+          .attr("class", "line")
+          .style("stroke", "green")
+          .style("stroke-width", 0.5)
+	  .attr("d", valuelineFreeHours(weekData));
+
+	// get the x and y values for least squares
+	var xSeries = d3.range(1, weekData.length);
+	var hSeries = weekData.map(function(d) { return d.hours; });
+	var fSeries = weekData.map(function(d) { return d.free; });
+
+        // Add the trendlines.
+        addTrendline(xSeries, hSeries, weekData, x, y, svg, "blue", "Meeting Hours");
+        addTrendline(xSeries, fSeries, weekData, x, y, svg, "green", "\"Maker\" Hours");
+
+	// Add the X Axis
+	svg.append("g")
+	  .attr("class", "x axis")
+	  .attr("transform", "translate(0," + height + ")")
+	  .call(xAxis)
+          .selectAll("text")
+          .style("text-anchor", "end")
+          .attr("dx", "-.8em")
+          .attr("dy", ".15em")
+          .attr("transform", "rotate(-65)");
+
+	// Add the Y Axis
+	svg.append("g")
+	  .attr("class", "y axis")
+	  .call(yAxis);
+        svg.append("text")
+          .attr("transform", "rotate(-90)")
+          .attr("y", 0 - margin.left)
+          .attr("x",0 - (height / 2))
+          .attr("dy", "1em")
+          .style("text-anchor", "middle")
+          .text("Hours / week");
+      }
+
+      function addTrendline(xSeries, ySeries, data, x, y, svg, color, name) {
+	var leastSquaresCoeff = leastSquares(xSeries, ySeries);
+
+	// apply the reults of the least squares regression
+	var x1 = data[0].date;
+	var y1 = leastSquaresCoeff[0] + leastSquaresCoeff[1];
+	var x2 = data[data.length - 1].date;
+	var y2 = leastSquaresCoeff[0] * xSeries.length + leastSquaresCoeff[1];
+
+	svg.append("line")
+	    .attr("x1", function(d) { return x(x1); })
+	    .attr("y1", function(d) { return y(y1); })
+	    .attr("x2", function(d) { return x(x2); })
+	    .attr("y2", function(d) { return y(y2); })
+	    .attr("stroke", color)
+	    .attr("stroke-width", 2);
+        svg.append("text")
+	  .attr("transform", "translate(" + (x(x2) + 3) + "," + y(y2) + ")")
+	  .attr("dy", ".35em")
+	  .attr("text-anchor", "start")
+	  .style("fill", color)
+	  .text(name);
+      }
+
+      // returns slope, intercept and r-square of the line
+      function leastSquares(xSeries, ySeries) {
+	var reduceSumFunc = function(prev, cur) { return prev + cur; };
+
+	var xBar = xSeries.reduce(reduceSumFunc) * 1.0 / xSeries.length;
+	var yBar = ySeries.reduce(reduceSumFunc) * 1.0 / ySeries.length;
+
+	var ssXX = xSeries.map(function(d) { return Math.pow(d - xBar, 2); })
+	    .reduce(reduceSumFunc);
+
+	var ssYY = ySeries.map(function(d) { return Math.pow(d - yBar, 2); })
+	    .reduce(reduceSumFunc);
+
+	var ssXY = xSeries.map(function(d, i) { return (d - xBar) * (ySeries[i] - yBar); })
+	    .reduce(reduceSumFunc);
+
+	var slope = ssXY / ssXX;
+	var intercept = yBar - (xBar * slope);
+	var rSquare = Math.pow(ssXY, 2) / (ssXX * ssYY);
+
+	return [slope, intercept, rSquare];
+      }
+
+    </script>
+
+    <script async defer src="https://apis.google.com/js/api.js"
+      onload="this.onload=function(){};handleClientLoad()"
+      onreadystatechange="if (this.readyState === 'complete') this.onload()">
+    </script>
+  </body>
+</html>
