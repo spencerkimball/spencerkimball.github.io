@@ -136,6 +136,7 @@
        *  Sign in the user upon button click.
        */
       function handleAuthClick(event) {
+        alert("When you click 'OK' here, choose your @cockroachlabs.com account. It will ask for permission grants for your calendar (read-only) and to append results of this analysis to a shared Google spreadsheet.\n\n-Spencer");
         gapi.auth2.getAuthInstance().signIn();
       }
 
