@@ -17,12 +17,12 @@
   </style>
 
   <head>
-    <title>Google Calendar API Quickstart</title>
+    <title>Calendar Meeting Analysis</title>
     <meta charset="utf-8" />
   </head>
 
   <body>
-    <p>Calendar Meeting Analysis</p>
+    <h1>Calendar Meeting Analysis</h1>
 
     <!--Add buttons to initiate auth sequence and sign out-->
     <button id="authorize_button" style="display: none;">Authorize</button>
@@ -33,6 +33,18 @@
       : <span>Total hours: </span><span id="hours_label">0</span>
     </p>
 
+    <p>
+      <span style="color: blue">Meeting Hours</span> are hours per week spent in meetings, as measured
+      in 15-minute block intervals. Note that meetings which are scheduled with you as the only
+      attendee are not counted towards meeting hours.
+    </p>
+    <p>
+      <span style="color: green">"Maker" Hours</span> are contiguous blocks
+      of at least one hour in your daily schedule from 9a to 5p, minus
+      one hour for lunch. If you have a lot of meetings, flex-Fridays
+      are most likely the reason this number isn't zero.
+    </p>
+
     <!-- load the d3.js library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
     <script src="https://unpkg.com/moment"></script>
@@ -41,13 +53,15 @@
       // Client ID and API key from the Developer Console
       var CLIENT_ID = '994454034918-tsps72ed225kfm1jeb9jh5p8sggfgn24.apps.googleusercontent.com';
       var API_KEY = 'AIzaSyAvIIoWyEEc4cfcHfukDUDT0qcm89atGMo';
+      var SPREADSHEET_ID = '1sJI3S05AY521Q-3g4CSpTfYttRJVJ6AcjE3k-k3n4sI';
 
       // Array of API discovery doc URLs for APIs used by the quickstart
-      var DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"];
+      var DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest",
+                            "https://sheets.googleapis.com/$discovery/rest?version=v4"];
 
       // Authorization scopes required by the API; multiple scopes can be
       // included, separated by spaces.
-      var SCOPES = "https://www.googleapis.com/auth/calendar.readonly";
+      var SCOPES = "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/spreadsheets";
 
       var authorizeButton = document.getElementById('authorize_button');
       var signoutButton = document.getElementById('signout_button');
@@ -242,6 +256,7 @@
 
           weekData[curWeek] = countTimeSlots(timeMin);
           displayGraph(timeMin);
+          recordResult();
         });
       }
 
@@ -375,6 +390,42 @@
 	var rSquare = Math.pow(ssXY, 2) / (ssXX * ssYY);
 
 	return [slope, intercept, rSquare];
+      }
+
+      function appendRow(sheet, row) {
+        gapi.client.sheets.spreadsheets.values.append({
+          spreadsheetId: SPREADSHEET_ID,
+          range: sheet,
+          valueInputOption: 'RAW',
+          insertDataOption: 'INSERT_ROWS',
+          resource: {
+            values: [row]
+          }
+        }).then(function(response) {
+          console.log(response);
+        }, function(response) {
+          alert('Error: ' + response.result.error.message);
+        });
+      }
+
+      function recordResult() {
+        var startDate = moment("Mon Feb 02 2015"),
+            startIdx = Math.floor(moment(weekData[0].date).diff(startDate) / _MS_PER_WEEK),
+            hours = [gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile().getEmail()],
+            free = [gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile().getEmail()];
+
+        for (var i = 0; i < startIdx; i++) {
+          hours.push(null);
+          free.push(null);
+        }
+
+        for (var i = startIdx; i < weekData.length; i++) {
+          hours.push(weekData[i - startIdx].hours);
+          free.push(weekData[i - startIdx].free);
+        }
+
+        appendRow('Hours', hours);
+        appendRow('Free', free);
       }
 
     </script>
