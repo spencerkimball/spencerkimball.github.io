@@ -67,6 +67,8 @@
       var signoutButton = document.getElementById('signout_button');
       var eventsLabel = document.getElementById('events_label');
       var hoursLabel = document.getElementById('hours_label');
+
+      var email = null;
       var eventCount = 0;
       var hourCount = 0;
       var weekData = [];
@@ -75,6 +77,74 @@
 
       const _MS_PER_HOUR = 1000 * 60 * 60,
             _MS_PER_WEEK = _MS_PER_HOUR * 24 * 7;
+
+      /**
+       *  On load, called to load the auth2 library and API client library.
+       */
+      function handleClientLoad() {
+        gapi.load('client:auth2', initClient);
+      }
+
+      /**
+       *  Initializes the API client library and sets up sign-in state
+       *  listeners.
+       */
+      function initClient() {
+        gapi.client.init({
+          apiKey: API_KEY,
+          clientId: CLIENT_ID,
+          discoveryDocs: DISCOVERY_DOCS,
+          scope: SCOPES
+        }).then(function () {
+          // Listen for sign-in state changes.
+          gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
+
+          // Handle the initial sign-in state.
+          updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+          authorizeButton.onclick = handleAuthClick;
+          signoutButton.onclick = handleSignoutClick;
+        }, function(error) {
+          appendPre(JSON.stringify(error, null, 2));
+        });
+      }
+
+      /**
+       *  Called when the signed in status changes, to update the UI
+       *  appropriately. After a sign-in, the API is called.
+       */
+      function updateSigninStatus(isSignedIn) {
+        eventCount = 0;
+        hourCount = 0;
+        weekData = [];
+        curWeek = -1;
+        timeSlots = null; // array of seven days x 96 15 minute time slots
+        eventsLabel.textContent = "0";
+        hoursLabel.textContent = "0";
+
+        if (isSignedIn) {
+          authorizeButton.style.display = 'none';
+          signoutButton.style.display = 'block';
+          email = gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile().getEmail();
+          fetchEvents();
+        } else {
+          authorizeButton.style.display = 'block';
+          signoutButton.style.display = 'none';
+        }
+      }
+
+      /**
+       *  Sign in the user upon button click.
+       */
+      function handleAuthClick(event) {
+        gapi.auth2.getAuthInstance().signIn();
+      }
+
+      /**
+       *  Sign out the user upon button click.
+       */
+      function handleSignoutClick(event) {
+        gapi.auth2.getAuthInstance().signOut();
+      }
 
       function allocateTimeSlots() {
         timeSlots = new Array(7);
@@ -135,63 +205,15 @@
         }
       }
 
-      /**
-       *  On load, called to load the auth2 library and API client library.
-       */
-      function handleClientLoad() {
-        gapi.load('client:auth2', initClient);
-      }
-
-      /**
-       *  Initializes the API client library and sets up sign-in state
-       *  listeners.
-       */
-      function initClient() {
-        gapi.client.init({
-          apiKey: API_KEY,
-          clientId: CLIENT_ID,
-          discoveryDocs: DISCOVERY_DOCS,
-          scope: SCOPES
-        }).then(function () {
-          // Listen for sign-in state changes.
-          gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
-
-          // Handle the initial sign-in state.
-          updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
-          authorizeButton.onclick = handleAuthClick;
-          signoutButton.onclick = handleSignoutClick;
-        }, function(error) {
-          appendPre(JSON.stringify(error, null, 2));
-        });
-      }
-
-      /**
-       *  Called when the signed in status changes, to update the UI
-       *  appropriately. After a sign-in, the API is called.
-       */
-      function updateSigninStatus(isSignedIn) {
-        if (isSignedIn) {
-          authorizeButton.style.display = 'none';
-          signoutButton.style.display = 'block';
-          fetchEvents();
-        } else {
-          authorizeButton.style.display = 'block';
-          signoutButton.style.display = 'none';
+      function polishWeekData(timeMin) {
+        if (curWeek != -1) {
+          weekData[curWeek] = countTimeSlots(timeMin);
         }
-      }
-
-      /**
-       *  Sign in the user upon button click.
-       */
-      function handleAuthClick(event) {
-        gapi.auth2.getAuthInstance().signIn();
-      }
-
-      /**
-       *  Sign out the user upon button click.
-       */
-      function handleSignoutClick(event) {
-        gapi.auth2.getAuthInstance().signOut();
+        for (var i = 0; i < weekData.length; i++) {
+          if (weekData[i] == null) {
+            weekData[i] = {date: new Date(timeMin + (_MS_PER_WEEK * i)), hours: 0, free: 0};
+          }
+        }
       }
 
       function fetchEventsHelper(timeMin, timeMax, nextPageToken) {
@@ -211,16 +233,28 @@
           if (events.length > 0) {
             for (var i = 0; i < events.length; i++) {
               var event = events[i],
-                  otherAttendees = false;
+                  otherAttendees = false,
+                  userIncluded = false,
+                  teamEvent = false;
               if (!event.attendees) {
                 continue;
               }
               // Check for multiple attendees; skip if user is sole attendee (assume personal time).
               for (var j = 0; j < event.attendees.length; j++) {
-                if (!event.attendees[j].resource && !event.attendees[j].self) {
-                  otherAttendees = true;
-                  break;
+                if (!event.attendees[j].resource) {
+                  if (event.attendees[j].email === email) {
+                    if (event.attendees[j].responseStatus === "accepted") {
+                      userIncluded = true;
+                    }
+                  } else if (event.attendees[j].email === "team@cockroachlabs.com") {
+                    teamEvent = true;
+                  } else {
+                    otherAttendees = true;
+                  }
                 }
+              }
+              if (!userIncluded || !otherAttendees || (teamEvent && timeMin == null)) {
+                continue;
               }
 
               var start = event.start.dateTime,
@@ -230,6 +264,7 @@
                     startDT = Date.parse(start);
                 if (!timeMin) {
                   timeMin = startDT;
+                  console.log(event, timeMin);
                 }
                 var week = Math.floor((startDT - timeMin) / _MS_PER_WEEK);
                 if (week != curWeek) {
@@ -240,10 +275,8 @@
                   curWeek = week;
                   allocateTimeSlots();
                 }
-                // Fill in time slots as busy if there are other attendees in the meeting.
-                if (otherAttendees) {
-                  fillTimeSlots(new Date(startDT), new Date(endDT));
-                }
+                // Fill in time slots as busy.
+                fillTimeSlots(new Date(startDT), new Date(endDT));
               }
             }
           }
@@ -254,7 +287,8 @@
             return;
           }
 
-          weekData[curWeek] = countTimeSlots(timeMin);
+          polishWeekData(timeMin);
+          console.log(weekData);
           displayGraph(timeMin);
           recordResult();
         });
@@ -297,7 +331,7 @@
 	    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
 	// Scale the range of the data
-        x.domain(d3.extent(weekData, function(d) { return d.date; }));
+        x.domain([weekData[0].date, weekData[weekData.length-1].date]);
 	y.domain([0, 40]);
 
 	// Add the valueline paths.
@@ -392,7 +426,7 @@
 	return [slope, intercept, rSquare];
       }
 
-      function appendRow(sheet, row) {
+      function appendSpreadsheetRow(sheet, row) {
         gapi.client.sheets.spreadsheets.values.append({
           spreadsheetId: SPREADSHEET_ID,
           range: sheet,
@@ -411,21 +445,21 @@
       function recordResult() {
         var startDate = moment("Mon Feb 02 2015"),
             startIdx = Math.floor(moment(weekData[0].date).diff(startDate) / _MS_PER_WEEK),
-            hours = [gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile().getEmail()],
-            free = [gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile().getEmail()];
+            hours = [email],
+            free = [email];
 
         for (var i = 0; i < startIdx; i++) {
           hours.push(null);
           free.push(null);
         }
 
-        for (var i = startIdx; i < weekData.length; i++) {
-          hours.push(weekData[i - startIdx].hours);
-          free.push(weekData[i - startIdx].free);
+        for (var i = 0; i < weekData.length; i++) {
+          hours.push(weekData[i].hours);
+          free.push(weekData[i].free);
         }
 
-        appendRow('Hours', hours);
-        appendRow('Free', free);
+        appendSpreadsheetRow('Hours', hours);
+        appendSpreadsheetRow('Free', free);
       }
 
     </script>
