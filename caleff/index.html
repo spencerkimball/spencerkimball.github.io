@@ -168,9 +168,11 @@
         var freeSlots = 0;
         var freeHours = 0;
         for (var i = 1; i <= 5; i++) { // monday - friday
-          for (var j = 9 * 4; j < 17 * 4; j++) { // 9a - 5p
+          for (var j = 0; j < 96; j++) {
             if (!timeSlots[i][j]) {
-              freeSlots++;
+              if (j >= 9 * 4 && j < 17 * 4) { // 9a - 5p
+                freeSlots++;
+              }
             } else {
               slots++;
             }
@@ -181,6 +183,7 @@
               freeSlots = 0;
             }
           }
+          //console.log(new Date(timeMin + (_MS_PER_WEEK * curWeek)), "day " + i, slots);
         }
         return {
           date: new Date(timeMin + (_MS_PER_WEEK * curWeek)),
@@ -192,7 +195,7 @@
       /**
        *  Populates the time slots matrix with booleans indicating overlapping meetings.
        */
-      function fillTimeSlots(start, end) {
+      function fillTimeSlots(start, end, event) {
         // assumption here that meetings don't cross day boundaries
         var day = start.getDay(),
             startH = start.getHours(),
@@ -201,12 +204,13 @@
             endM = end.getMinutes(),
             startSlot = startH * 4 + Math.floor(startM / 15),
             endSlot = endH * 4 + Math.ceil(endM / 15);
+        //console.log(event.summary, event.start.dateTime, startSlot, endSlot);
         for (var i = startSlot; i < endSlot; i++) {
           timeSlots[day][i] = true;
         }
       }
 
-      function polishWeekData(timeMin) {
+      function finishWeekData(timeMin) {
         if (curWeek != -1) {
           weekData[curWeek] = countTimeSlots(timeMin);
         }
@@ -247,9 +251,10 @@
                     if (event.attendees[j].responseStatus === "accepted") {
                       userIncluded = true;
                     }
-                  } else if (event.attendees[j].email === "team@cockroachlabs.com") {
-                    teamEvent = true;
                   } else {
+                    if (event.attendees[j].email === "team@cockroachlabs.com") {
+                      teamEvent = true;
+                    }
                     otherAttendees = true;
                   }
                 }
@@ -264,8 +269,9 @@
                 var endDT = Date.parse(end),
                     startDT = Date.parse(start);
                 if (!timeMin) {
-                  timeMin = startDT;
-                  console.log(event, timeMin);
+                  var truncDate = new Date(startDT);
+                  truncDate.setHours(0, 0, 0, 0);
+                  timeMin = truncDate.getTime();
                 }
                 var week = Math.floor((startDT - timeMin) / _MS_PER_WEEK);
                 if (week != curWeek) {
@@ -277,7 +283,7 @@
                   allocateTimeSlots();
                 }
                 // Fill in time slots as busy.
-                fillTimeSlots(new Date(startDT), new Date(endDT));
+                fillTimeSlots(new Date(startDT), new Date(endDT), event);
               }
             }
           }
@@ -288,7 +294,7 @@
             return;
           }
 
-          polishWeekData(timeMin);
+          finishWeekData(timeMin);
           console.log(weekData);
           displayGraph(timeMin);
           recordResult();
