@@ -193,6 +193,14 @@ Model.prototype.localityLatencies = function(city) {
 }
 
 Model.prototype.addNode = function(node) {
+  this.updateNode(node);
+
+  // Add new node & update visualization.
+  this.roachNodes.push(node);
+  this.layout();
+}
+
+Model.prototype.updateNode = function(node) {
   // Link this node to all others.
   for (var i = 0; i < this.roachNodes.length; i++) {
     var oNode = this.roachNodes[i];
@@ -202,10 +210,6 @@ Model.prototype.addNode = function(node) {
     var rl = new Link(oNode, node, "route", latency, this);
     oNode.routes[node.id] = rl;
   }
-
-  // Add new node & update visualization.
-  this.roachNodes.push(node);
-  this.layout();
 }
 
 Model.prototype.removeNode = function(node) {
@@ -354,7 +358,11 @@ Model.prototype.resetLocalities = function() {
   for (var i = 0; i < this.roachNodes.length; i++) {
     var node = this.roachNodes[i];
     if (localityHasPrefix(node.locality, this.currentLocality)) {
+      // ROBERT: to see city-level clusters in the global view,
+      // uncomment the +2 line below. You'll also need to change
+      // the scale in localities.js.
       var locality = node.locality.slice(0, this.currentLocality.length + 1);
+      //var locality = node.locality.slice(0, this.currentLocality.length + 2);
       var key = localityKey(locality);
       if (!(key in localityMap)) {
         localityMap[key] = {
@@ -416,6 +424,7 @@ function dotprod(v1, v2) {
 // localities.
 Model.prototype.computeLocalityScale = function() {
   var scale = 1,
+      //maxDistance = this.skin.maxRadius(this) * 0.75;
       maxDistance = this.skin.maxRadius(this) * 2;
   for (var i = 0; i < this.localities.length; i++) {
     this.localities[i].pos = this.projection(this.localities[i].location);
@@ -432,6 +441,7 @@ Model.prototype.computeLocalityScale = function() {
     }
   }
   this.localityScale = scale;
+  //this.localityScale = 1;
 }
 
 // findClosestPoint locates the closest point on the vector starting
@@ -470,7 +480,7 @@ Model.prototype.computeLocalityLinkPaths = function() {
   for (var i = 0; i < this.localityLinks.length; i++) {
     var link = this.localityLinks[i];
     // Make sure the link goes from left to right.
-    if (link.l1.pos > link.l2.pos) {
+    if (link.l1.pos[0] > link.l2.pos[0]) {
       var l1Tmp = link.l1;
       link.l1 = link.l2;
       link.l2 = l1Tmp;

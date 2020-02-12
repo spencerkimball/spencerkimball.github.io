@@ -8,6 +8,7 @@ function Facility(city, locality, racks, nodesPerRack, model) {
   this.racks = racks;
   this.nodesPerRack = nodesPerRack;
   this.nodes = [];
+  this.model = model;
 
   // Add racks and nodes for each facility.
   for (var k = 0; k < racks; k++) {
@@ -35,6 +36,9 @@ Facility.prototype.updateLocation = function() {
   this.location = location;
   for (var i = 0; i < this.nodes.length; i++) {
     this.nodes[i].location = location;
+  }
+  for (var i = 0; i < this.nodes.length; i++) {
+    this.model.updateNode(this.nodes[i]);
   }
   return true;
 }

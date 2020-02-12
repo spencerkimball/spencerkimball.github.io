@@ -8,13 +8,17 @@ var populationScale = d3.scale.sqrt();
 var globalCities = [];
 var globalCityMap = {};
 //var latencyColors = ["#ff0000","#ff4e00","#ffb000","#eccc00","#91cc00","#36cc00","#00cc7f","#00b2cc","#0033cc","#5a00cc","#0000ff"];
-var latencyColors = ["#0000ff","#5a00cc","#0033cc","#00b2cc","#00cc7f","#36cc00","#91cc00","#eccc00","#ffb000","#ff4e00","#ff0000"];
+var latencyColors = ["#00ff00","#36cc00","#91cc00","#eccc00","#ffb000","#ff4e00","#ff0000"];
 var color = d3.scale.category20();
 
 function lookupCityLocation(name) {
   if (name in globalCityMap) {
     return [globalCityMap[name].longitude, globalCityMap[name].latitude];
   } else if (globalCities.length > 0) {
+    if (name == "SÃo Paulo") {
+      name = "SÃ£o Paulo";
+      return [globalCityMap[name].longitude, globalCityMap[name].latitude];
+    }
     alert("The deployment specifies a facility in city=\"" + name + "\", but the location of that city is unknown; using \"San Francisco\" as the location.");
     return [globalCityMap["San Francisco"].longitude, globalCityMap["San Francisco"].latitude];
   }
@@ -244,8 +248,10 @@ function layoutProjection(model) {
             rMin = 0,
             rMax = Math.sqrt(peopleMax / (peoplePerPixel * Math.PI));
         populationScale.range([rMin, rMax]);
-        var domain = [d3.min(model.filteredCities, function(d) { return d3.min(model.localityLatencies(d)); }),
-                      d3.max(model.filteredCities, function(d) { return d3.max(model.localityLatencies(d)); })],
+        //var domain = [d3.min(model.filteredCities, function(d) { return d3.min(model.localityLatencies(d)); }),
+        //d3.max(model.filteredCities, function(d) { return d3.max(model.localityLatencies(d)); })],
+        // ROBERT: change the domain to alter the latency scale bounds ([0, 100] = 0ms to 100ms).
+        var domain = [0, 100],
             step = d3.scale.linear().domain([1,latencyColors.length]).range(domain),
             latencyScale = d3.scale.linear().range([0, viewWidth / 3]).domain(domain),
             colorScale = d3.scale.linear().domain([step(1), step(2), step(3), step(4), step(5), step(6), step(7), step(8), step(9), step(10), step(11)])

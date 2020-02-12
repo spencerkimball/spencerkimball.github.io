@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<head>
+  <link rel="stylesheet" type="text/css" href="style.css" media="screen" />
+</head>
+
+<body>
+  <script src="d3.v3.js"></script>
+  <script src="d3-path.v1.min.js"></script>
+  <script src="d3-shape.v1.min.js"></script>
+  <script src="database.js"></script>
+  <script src="expvar.js"></script>
+  <script src="facility.js"></script>
+  <script src="model.js"></script>
+  <script src="link.js"></script>
+  <script src="locality.js"></script>
+  <script src="locality_link.js"></script>
+  <script src="node.js"></script>
+  <script src="table.js"></script>
+  <script src="range.js"></script>
+  <script src="replica.js"></script>
+  <script src="request.js"></script>
+  <script src="app.js"></script>
+  <script src="visualization.js"></script>
+  <script src="localities.js"></script>
+  <script src="boxes.js"></script>
+  <script src="circles.js"></script>
+
+  <div class="box">
+    <div id="Global" class="model"></div>
+
+    <div class="details">
+      <div class="localities">
+        <h2>Replication Sites</h2>
+        <table id="localities">
+          <thead>
+            <tr></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="databases">
+        <h2>Databases</h2>
+        <table id="databases">
+          <thead>
+            <tr></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+
+function initModel(model) {
+  model.projection = d3.geo.mercator();
+  model.skin = new Localities();
+  model.enablePlayAndReload = false;
+  model.enableAddNodeAndApp = false;
+  model.displaySimState = false;
+
+  // Facilities.
+  /*
+  new Facility("St. Louis", ["region=United States", "city=St. Louis"], 1, 1, model);
+  new Facility("Des Moines", ["region=United States", "city=Des Moines"], 1, 1, model);
+  new Facility("Albuquerque", ["region=United States", "city=Albuquerque"], 1, 1, model);
+  new Facility("Colorado Springs", ["region=United States", "city=Colorado Springs"], 1, 1, model);
+
+  new Facility("Basel", ["city=Geneva"], 1, 6, model);
+  new Facility("Hong Kong", ["city=Hong Kong"], 1, 6, model);
+  */
+
+  /*
+  new Facility("Richmond", ["region=United States", "city=Richmond"], 1, 5, model);
+  new Facility("Atlanta", ["region=United States", "city=Atlanta"], 1, 5, model);
+  new Facility("Des Moines", ["region=United States", "city=Des Moines"], 1, 5, model);
+  new Facility("San Jose", ["region=United States", "city=San Jose"], 1, 5, model);
+  new Facility("El Paso", ["region=United States", "city=El Paso"], 1, 5, model);
+*/
+
+  new Facility("Charlotte", ["region=United States", "city=Charlotte"], 1, 5, model);
+  new Facility("Fort Worth", ["region=United States", "city=Fort Worth"], 1, 5, model);
+  new Facility("Salt Lake City", ["region=United States", "city=Salt Lake City"], 1, 5, model);
+
+  new Facility("Lima", ["region=South America", "city=Lima"], 1, 5, model);
+  new Facility("Sydney", ["region=Australia", "city=Sydney"], 1, 3, model);
+
+  new Facility("Barcelona", ["region=European Union", "city=Barcelona"], 1, 5, model);
+  new Facility("London", ["region=European Union", "city=London"], 1, 5, model);
+  new Facility("Berlin", ["region=European Union", "city=Berlin"], 1, 5, model);
+
+  new Facility("Melbourne", ["region=Australia", "city=Melbourne"], 1, 3, model);
+  new Facility("Brisbane", ["region=Australia", "city=Brisbane"], 1, 3, model);
+
+  new Facility("Shenzhen", ["region=China", "city=Shenzhen"], 1, 5, model);
+  new Facility("Shanghai", ["region=China", "city=Shanghai"], 1, 5, model);
+  new Facility("Beijing", ["region=China", "city=Beijing"], 1, 5, model);
+
+  new Facility("Buenos Aires", ["region=South America", "city=Buenos Aires"], 1, 5, model);
+  new Facility("SÃo Paulo", ["region=South America", "city=SÃo Paulo"], 1, 5, model);
+
+  // Create tables, with a mix of spanning and local zone configs.
+
+  /*
+  // First, globally replicated tables.
+  var globalZoneConfig = [["region=United States"], ["region=European Union"], ["region=Australia"], ["region=China"], ["region=India"]];
+  var globalDB = new Database("Single Sign-On", model);
+  var globalT1 = new Table("global.control", globalZoneConfig, model.splitSize * 2, globalDB, model);
+  var globalT2 = new Table("global.sso", globalZoneConfig, model.splitSize, globalDB, model);
+  new App(["region=United States"], [globalT1, globalT2], model);
+  new App(["region=European Union"], [globalT1, globalT2], model);
+  new App(["region=India"], [globalT1, globalT2], model);
+  new App(["region=China"], [globalT1, globalT2], model);
+  new App(["region=Australia"], [globalT1, globalT2], model);
+  // App1 lives in US.
+  var usSpanningConfig = [["city=Seattle"], ["city=Los Angeles"], ["city=Des Moines"], ["city=Miami"], ["city=New York City"]];
+  var usSalesDB = new Database("US Customers", model);
+  var app1T1 = new Table("app1.customer", usSpanningConfig, model.splitSize * 1, usSalesDB, model);
+  var app1T2 = new Table("app1.item", usSpanningConfig, model.splitSize * 2, usSalesDB, model);
+  var app1T3 = new Table("app1.order", usSpanningConfig, model.splitSize * 5, usSalesDB, model);
+  for (i = 0; i < 8; i++) {
+    new App(["region=United States"], [app1T1, app1T2, app1T3], model);
+  }
+
+  // App2 lives in EU.
+  var euSpanningConfig = [["city=London"], ["city=Stockholm"], ["city=Berlin"]];
+  var euPhotosDB = new Database("EU Customers", model);
+  var app2T1 = new Table("app2.user", euSpanningConfig, model.splitSize * 1, euPhotosDB, model);
+  var app2T2 = new Table("app2.photo", euSpanningConfig, model.splitSize * 2, euPhotosDB, model);
+  var app2T3 = new Table("app2.comment", euSpanningConfig, model.splitSize * 5, euPhotosDB, model);
+  for (i = 0; i < 4; i++) {
+    new App(["region=European Union"], [app2T1, app2T2, app2T3], model);
+  }
+
+  // App4 lives in India.
+  var inSpanningConfig = [["city=Bangalore"], ["city=Mumbai"], ["city=New Delhi"]];
+  var inBankDB = new Database("Indian Customers", model);
+  var app4T1 = new Table("app4.bank", inSpanningConfig, model.splitSize, inBankDB, model);
+  var app4T2 = new Table("app4.account", inSpanningConfig, model.splitSize * 2, inBankDB, model);
+  var app4T3 = new Table("app4.transaction", inSpanningConfig, model.splitSize * 5, inBankDB, model);
+  for (i = 0; i < 5; i++) {
+    new App(["region=India"], [app4T1, app4T2, app4T3], model);
+  }
+
+  // App3 lives in China.
+  var cnSpanningConfig = [["city=Shenzhen"], ["city=Shanghai"], ["city=Beijing"]];
+  var cnProductDB = new Database("Chinese Customers", model);
+  var app3T1 = new Table("app3.merchant", cnSpanningConfig, model.splitSize * 2, cnProductDB, model);
+  var app3T2 = new Table("app3.catalog", cnSpanningConfig, model.splitSize * 10, cnProductDB, model);
+  var app3T3 = new Table("app3.product", cnSpanningConfig, model.splitSize * 15, cnProductDB, model);
+  for (i = 0; i < 6; i++) {
+    new App(["region=China"], [app3T1, app3T2, app3T3], model);
+  }
+
+  // App5 lives in Australia.
+  var auConfig = [["city=Sydney"], ["city=Melbourne"], ["city=Brisbane"]];
+  var auLedgerDB = new Database("Australian Customers", model);
+  var app5T1 = new Table("app5.account", auConfig, model.splitSize * 2, auLedgerDB, model);
+  var app5T2 = new Table("app5.ledger", auConfig, model.splitSize * 4, auLedgerDB, model);
+  var app5T3 = new Table("app5.transaction_leg", auConfig, model.splitSize * 10, auLedgerDB, model);
+  for (i = 0; i < 3; i++) {
+    new App(["region=Australia"], [app5T1, app5T2, app5T3], model);
+  }
+*/
+  addModel(model);
+}
+new Model("Global", viewWidth, viewHeight * 1, function(m) { initModel(m); });
+
+</script>
+</body>

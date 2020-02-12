@@ -146,6 +146,16 @@ body {
     opacity: 0.75;
 }
 
+.latency-centric .locality-label {
+    fill: #152849;
+    stroke-width: 0px;
+    font-size: 12px;
+    font-weight: medium;
+    alignment-baseline: middle;
+    text-anchor: middle;
+    pointer-events: none;
+}
+
 .capacity-used {
     fill: #51bbfd;
     stroke: #daeefa;
@@ -258,6 +268,11 @@ body {
     stroke: #ccc;
     stroke-width: 1.5px;
     fill-opacity: 0;
+}
+
+.locality-link.unavailable {
+    stroke: #d95d4f;
+    opacity: 0.3;
 }
 
 .incoming-throughput-label {

@@ -73,6 +73,13 @@ function showLocalityLinks(model, locality) {
     .duration(250)
     .attr("visibility", function(d) { return (d.l1 == locality || d.l2 == locality) ? "visible" : "hidden"; })
     .attr("opacity", function(d) { return (d.l1 == locality || d.l2 == locality) ? 1 : 0; });
+  model.svg.selectAll(".locality-link")
+    .attr("class", function(d) {
+      var available = (d.l1.state() != "unavailable" || d.l2.state() != "unavailable");
+      return "locality-link " + (available ? "" : "unavailable");
+    });
+  model.svg.selectAll(".locality-link-group").selectAll("text")
+    .attr("visibility", function(d) { return (d.l1.state() != "unavailable" || d.l2.state() != "unavailable") ? "visible" : "hidden"; });
 }
 
 function hideLocalityLinks(model, locality) {
@@ -201,6 +208,11 @@ Localities.prototype.locality = function(model, sel) {
   localityLabels.append("path")
     .attr("d", function(d) { return drawBox(outerR * 2, 20, 0.05); })
     .attr("class", "locality-label-background")
+    .on("click", function(d) {
+      d3.event.stopPropagation();
+      d.toggleState();
+      refreshModel(d.model);
+    });
   localityLabels.append("svg")
     .attr("width", function(d) { return outerR * 2 })
     .attr("height", "20")
@@ -238,6 +250,26 @@ Localities.prototype.locality = function(model, sel) {
     .on("mouseout", function(d) { hideLocalityLinks(model, d); });
 
   // The latency-centric, simplified locality group.
+  var latencyG = sel.append("g")
+      .attr("class", "latency-centric")
+      .on("mouseover", function(d) { showLocalityLinks(model, d); })
+      .on("mouseout", function(d) { hideLocalityLinks(model, d); });
+  latencyG.append("svg:image")
+    .attr("xlink:href", "cluster.png")
+    // ROBERT: Use 0.75 for big clusters.
+    .attr("transform", "scale(0.35,0.35)")
+    //.attr("transform", "scale(0.75,0.75)")
+    .attr("x", -45)
+    .attr("y", -35)
+    .attr("width", 90)
+    .attr("height", 71);
+  latencyG.append("text")
+    .attr("class", "locality-label")
+    // ROBERT: Use 36 for big font (change style.css definition for locality-label to 14pt too)
+    .attr("y", 18)
+    //.attr("y", 36)
+    .text(function(d) { return d.name; });
+  /*
   var latencyR = innerR / 2,
       latencyG = sel.append("g")
       .attr("class", "latency-centric")
@@ -255,6 +287,7 @@ Localities.prototype.locality = function(model, sel) {
     .attr("class", "locality-label")
     .attr("y", latencyR + 12)
     .text(function(d) { return d.name; });
+*/
 }
 
 Localities.prototype.localityLink = function(model, sel) {
