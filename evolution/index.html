@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<head>
+  <link rel="stylesheet" type="text/css" href="style.css" media="screen" />
+</head>
+
+<body>
+  <script src="d3.v3.js"></script>
+  <script src="d3-path.v1.min.js"></script>
+  <script src="d3-shape.v1.min.js"></script>
+  <script src="database.js"></script>
+  <script src="expvar.js"></script>
+  <script src="facility.js"></script>
+  <script src="model.js"></script>
+  <script src="link.js"></script>
+  <script src="locality.js"></script>
+  <script src="locality_link.js"></script>
+  <script src="node.js"></script>
+  <script src="table.js"></script>
+  <script src="range.js"></script>
+  <script src="replica.js"></script>
+  <script src="request.js"></script>
+  <script src="app.js"></script>
+  <script src="visualization.js"></script>
+  <script src="localities.js"></script>
+
+  <h1>Your Business Will Evolve. Your Database Shouldn&#39;t Have to</h1>
+
+  <p>Cockroaches first evolved more than 300M years ago, and they
+  haven’t changed enough that the O.G. is now unrecognizable. “Modern”
+  cockroaches are about 200M years old; that they’re still with us,
+  largely unchanged, is quite impressive from an evolutionary
+    perspective.
+  </p>
+  <p>Meanwhile, everything seems to be evolving at lightspeed in our
+  industry. The growth of the public cloud has prompted technology
+  investments that have resulted in a new wave of advanced
+  orchestration capabilities (e.g. Cloud Foundry, Mesosphere, Docker,
+  Kubernetes, etc). That these capabilities bring Google-like power to
+  operations is no accident – they were largely inspired or even
+  created by Google. Their aim is simple: realize the efficiencies
+  available using the public cloud by coherently managing the
+  lifecycles of hundreds or thousands of VMs to deploy
+  microservices. The public cloud provides the extremely low-friction
+  resources; the orchestration layer provides the control surface.
+  </p>
+  <p>To date, Kubernetes has made running instances of stateless
+  application logic simple. It essentially boils down to packaging the
+  application logic into a Docker image and instructing Kubernetes to
+  schedule N instances behind a load balancer (I’m going to use
+  Kubernetes generically from here on out). It sounds simple, but the
+  combination of technologies are together accomplishing a number of
+  tasks which used to require truly significant fixed R&D and variable
+  opex costs.
+  </p>
+  <p>Unless your next project is an online calculator, there is no
+  point in building a stateless application. The gaping hole in the
+  Kubernetes story has been, and remains, state. Companies looking to
+  re-architect and re-deploy with Kubernetes can stride into the
+  future with one foot (application microservices), while the other
+  (storage systems) remains stuck in the past. Existing monolithic
+  database technologies like Oracle, MySQL and Postgres can certainly
+  be scheduled using Kubernetes, but that misses the point. They’re
+  unable to take advantage of the benefits inherent in the very idea
+  of “the cloud”. It’s like casting pearls before swine, no offense to
+  MySQL or Postgres.
+  </p>
+  <p>What do I mean by using the inherent benefits of the cloud? It’s
+  simple really: cloud-native databases can leverage the ability to
+  quickly schedule resources within a facility, but also across
+  facilities, cloud service providers, and even continents. This can
+  allow them to provide scale, unmatched resilience, low-latency
+  global operation, and data sovereignty compliance. Monolithic
+  databases remain useful pieces of technology, but because they
+  require scaling up just one master node, they are evolutionary dead
+  ends. They are the products of a smaller, less connected era, and
+  their shortcomings risk becoming liabilities for your business as it
+  evolves.
+  </p>
+  <p>CockroachDB takes advantage of cloud resources to let your
+  business evolve gracefully as it grows, without requiring a
+  re-architecture or significant migration. It scales elastically
+  using commodity resources, has integral high availability, can
+  geographically replicate data for global access, provides an
+  industry-standard SQL API, and deploys as easily with Kubernetes as
+  your stateless microservices. That might just sound like a lot of
+  gobbledygook; it’s not. These are vital capabilities, and I’m going
+  to try to make them more concrete in the remainder of this post.
+  </p>
+
+  <p>I’ve created a D3 simulation which illustrates how CockroachDB
+  can be deployed as the central OLTP component of your company’s data
+  architecture, no matter which stage you’re at. There are five
+  deployments shown here, and in most cases, the simulation
+  illustrates a transition from one stage to the next.
+  </p>
+
+  <h2>Stage 1: Build.</h2>
+  <p>You&#39;ve got to start somewhere. And that&#39;s actually a significant
+    problem with some cloud DBaaS offerings. CockroachDB is open
+    source and runs on MacOS, Linux, and Windows, so development on a
+    laptop is simple and expedient. You can easily setup local
+    clusters too, using
+    the <a href="https://github.com/petermattis/roachdemo">roachdemo
+    tool</a>. If you&#39;re developing microservices using go, you can
+    spin up ephemeral CockroachDB clusters in unittests
+    using <a href="https://github.com/cockroachdb/cockroach-go/tree/master/testserver">testserver</a>.
+
+  <h2>Stage 2: Stand up a resilient service.</h2>
+
+  <p>The first time CockroachDB is deployed to the cloud, it might be
+    started as a single node. However, a singular benefit of
+    CockroachDB is that it&#39;s inherently highly available (HA),
+    requiring no complex configuration or third-party failover
+    mechanism to replicate and remain available in the event of node
+    failure. It just needs additional nodes to join the cluster. But a
+    highly available database with a symmetric, shared-nothing
+    architecture isn&#39;t just for resilience in the face of unplanned
+    failures. It&#39;s a crucial enabler for prosaic administrative tasks
+    like zero-downtime upgrades and VM rescheduling.
+  <p>CockroachDB uses the Raft consensus protocol to
+    <i>consistently</i> replicate data between nodes. Table data is
+    split into segments of contiguous key space (ordered by primary
+    key), internally called "ranges". Each range runs its own Raft
+    algorithm to replicate and repair the data it contains. If
+    you&#39;d like a more sophisticated explanation, there&#39;s
+    <a href="https://www.cockroachlabs.com/docs/stable/architecture/replication-layer.html">more
+    detail available here</a>. In the simulations below, each range is
+    visually depicted by a vertical stack of three replicas (replicas
+    are visually depicted as boxes).
+  <p><img src="explain1b.png" class="explain-img" style="margin: 20px
+    0px 20px 20px"/>Before we get started, you might be wondering
+    about the figures in the simulation diagrams on this
+    page. Here&#39;s a quick legend.
+  <p>Each of the circular figures represent either a single node or a
+    collection of nodes. If labeled as an internal IP address
+    (e.g. "10.10.1.1"), they are a single node. Otherwise, they
+    represent a collection of nodes, either as a facility
+    (e.g. "New York City") or even multiple facilities within a region
+    (e.g. "United States"). Facilities and regions may be clicked to
+    expand the facilities or nodes they contain. Use the escape key or
+    the browser&#39;s back button to zoom back out. Hovering over the
+    outside of the capacity gauge expands it so that you can view a
+    pie-chart showing the breakdown of space used between four
+    database tables: Registration, Products, Orders, and Details.
+    Hover over the direct center to see network links (note that this
+    only works if there&#39;s more than one node shown).
+
+  <div id="resilience" class="model"></div>
+
+<script>
+
+var resilienceModel = null;
+function toggleNodeState(idx) {
+  if (idx < resilienceModel.localities.length) {
+    resilienceModel.localities[idx].toggleState();
+  }
+}
+
+new Model("resilience", viewWidth, viewHeight * 1, function(m) {
+  resilienceModel = m;
+  m.projection = d3.geo.mercator();
+  m.skin = new Localities();
+  m.enablePlayAndReload = false;
+  m.enableAddNodeAndApp = false;
+  m.displaySimState = false;
+  m.startExplanationHTML = `
+    <div class="explanation-text">
+      <img src="explain1a.png" style="float: left; margin: 0px 20px 20px 0px">
+      <b>The simulation below</b> shows just a single CockroachDB node. To
+      make it slightly more interesting, it additionally incorporates a
+      small amount of ongoing client traffic, shown by the red "client
+      activity" gauge. Don&#39;t let the boring single node fool you: it&#39;s
+      pregnant with capability. It just needs some additional nodes to
+      work with, and magic happens. Add nodes by clicking the button.
+      <p><b>Legend</b>: The table data grids shown next to each node
+        show the breakdown of ranges in each table (one range is
+        approximately 64MiB of contiguous table data). There are three
+        replicas in each range (the three vertically stacked
+        boxes). If an replica for a range exists on the node, it will
+        be shown as colored and empty otherwise. Notice that in the first
+        simulation, each range of table data has only a single replica. This
+        should make sense as there is only one node in the cluster. When you
+        click the button below to add two nodes, you&#39;ll see that each of the
+        three nodes in the cluster will contain one replica from each range.
+        Try it!
+`;
+  m.nextStepHTML = "Add Two Nodes for Resilience";
+  m.nextStepExplanationHTML = `
+    <div class="explanation-text">
+      By adding two additional nodes, the cluster is now able to
+      fully replicate the data for fault tolerance. This simulation
+      has been configured to display only up-replication traffic,
+      which appears as animated circles, traveling along network
+      links from the original node to the two new nodes.
+      <p><b>Tip</b>: Hover over the outer perimeter of a node to see
+        the two new node&#39;s fractional space utilization increase as
+        up-replication proceeds.
+      <p><b>Tip</b>: Hover over the center of a node to pin the
+        network link lines.
+      <p><b>Note</b>: this is a simulation. It&#39;s only as accurate as it
+        was programmed to be. Nevertheless, the gauges and network
+        link lines show the past second of activity, including
+        up-replication and client activity.
+      <p><b>Extra</b>: Simulate node failures by toggling the states for nodes:
+        <button class="extras-button" onclick="toggleNodeState(0)">Toggle Node 1 availability</button>,&nbsp;
+        <button class="extras-button" onclick="toggleNodeState(1)">Toggle Node 2 availability</button>,&nbsp;
+        <button class="extras-button" onclick="toggleNodeState(2)">Toggle Node 3 availability</button>.
+        Note that because Raft requires a quorum to make forward progress,
+        all writes will cease if more than one node is down simultaneously.
+    </div>
+`;
+
+  // Facilities.
+  new Facility("New York City", ["city=New York City"], [-74.0060, 40.7128], 1, 1, m);
+  m.roachNodes[0].locality.push("node=10.10.1.1");
+
+  var dcConfig = [["node=10.10.1.1"], ["node=10.10.1.2"], ["node=10.10.1.3"]];
+  var salesDB = new Database("Sales", m);
+  var t1 = new Table("Registration", dcConfig, m.splitSize * 0.25, salesDB, m);
+  var t2 = new Table("Products", dcConfig, m.splitSize * 1, salesDB, m);
+  var t3 = new Table("Orders", dcConfig, m.splitSize * 2.5, salesDB, m);
+  var t4 = new Table("Details", dcConfig, m.splitSize * 3.5, salesDB, m);
+
+  for (var i = 0; i < 10; i++) {
+    new App(["*"], [t1, t2, t3, t4], m);
+  }
+
+  addModel(m);
+}, function(m) {
+  zoomToLocality(m, 750, ["city=New York City"], false);
+}, function(m) {
+  // Add two nodes to the facility to rack 0.
+  m.facilities[0].addNode(0, 1);
+  m.facilities[0].addNode(0, 2);
+  m.roachNodes[1].locality.push("node=10.10.1.2");
+  m.roachNodes[2].locality.push("node=10.10.1.3");
+});
+
+</script>
+
+  <h2>Stage 3: Achieve significant scale.</h2>
+  <p>You can put a lot of data on a server these days, but big and
+    monolithic is only the way people are <i>used</i> to running
+    databases. You wouldn&#39;t deploy your application logic on a
+    solitary, scaled-up server because you&#39;d want to avoid a
+    single point of failure, and you&#39;d want the option to scale
+    beyond even the largest monolithic server. You&#39;d also want to
+    minimize any disruption to client load in the event of node loss.
+  <p>The same principles apply to your database, only more so. A
+    typical disruption to a monolithic database is <b>total</b> (as
+    experienced by connected clients), and can have long recovery time
+    objectives, even with sophisticated failover mechanisms. Worse,
+    monolithic architectures, even when configured with active/passive
+    or active/active repliction, can have a non-zero recovery point
+    objective, meaning there could be data loss.
+  <p>When a CockroachDB node experiences failure, the entire aggregate
+    bandwidth of the cluster is used to up-replicate the missing data.
+    This same mechanism is used to rebalance data as new nodes are
+    added to a cluster. <b>In the simulation below</b>, the original
+    three node cluster is scaled by adding five additional nodes.
+  <p><b>Note</b> that the capacity of each node in this example has
+    been reduced to more clearly illustrate relative fullness and
+    iterative rebalancing.
+
+  <div id="scale" class="model"></div>
+
+<script>
+
+var scaleModel = null;
+function addNodesToGlobalScaleModel(count) {
+  var curCount = scaleModel.facilities[0].nodes.length;
+  if (curCount >= 32) {
+    alert("Are you crazy? Adding more nodes will melt your core!");
+    return;
+  }
+  for (var i = 0; i < count; i++) {
+    scaleModel.facilities[0].addNode(0, curCount+i);
+  }
+  zoomToLocality(scaleModel, 0, scaleModel.currentLocality, false);
+}
+
+new Model("scale", viewWidth, viewHeight * 1, function(m) {
+  scaleModel = m;
+  m.projection = d3.geo.mercator();
+  m.nodeCapacity = 120;
+  m.skin = new Localities();
+  m.enablePlayAndReload = false;
+  m.enableAddNodeAndApp = false;
+  m.displaySimState = false;
+  m.startExplanationHTML = `
+  <div class="explanation-text">
+    <b>The simulation below</b> shows a three-node, resilient setup
+    with significant ongoing client traffic and nearly full disks.
+    Note that in this simulation, the capacity of each node has been
+    reduced to show fullness without requiring that the simulation
+    melt your CPU core virtually "running" the many ranges which would
+    be required to fill GiBs of simulated disk.
+    `;
+  m.nextStepHTML = "Add Five Nodes to Scale";
+  m.nextStepExplanationHTML = `
+    <div class="explanation-text">
+      Adding five additional nodes allows the original three, overfull
+      and overloaded nodes to rebalance data and client traffic. This
+      continues until the full eight nodes have roughly equal disk
+      utilization and client traffic. CockroachDB uses a peer-to-peer
+      gossip protocol to efficiently communicate state about each
+      node. The two most important gossiped data are a node&#39;s
+      externally reachable IP address and an accounting of its
+      available storage capacity. The relative freshness of this data
+      is not guaranteed by the gossip network, but it&#39;s also not
+      required for correctness.
+      <p>Each node makes local decisions about whether to rebalance.
+        A typical decision is made based on 1) how full a node is
+        relative to its peers, 2) whether any of the underfull peers
+        is available (there&#39;s a reservation system), and 3) whether the
+        available peers meet configured replication constraints.
+      <p><b>Extra</b>:
+        Click this button to
+        <button class="extras-button" onclick="addNodesToGlobalScaleModel(8)">Add another 8 nodes</button>,
+        to double the cluster by adding eight more nodes to
+        the cluster. This is meant to illustrate how quickly
+        rebalancing happens as a cluster scales out. Remember,
+        CockroachDB will use the <b>aggregate</b> bandwidth of the
+        cluster to rebalance data or up-replicate data after node
+        loss. Data can be rebalanced or recovered in time proportional
+        to the inverse of the number of nodes. Notice how it&#39;s no
+        longer just three nodes doing the rebalancing, but eight. Want
+        to see it again? Click this button to
+        <button class="extras-button" onclick="addNodesToGlobalScaleModel(16)">Add another 16 nodes</button>.
+      <p>If you&#39;ve made it this far, you should stop the simulation
+        (click the button below) because simulating this many nodes is
+        a big drag on your CPU.
+    </div>
+  `;
+
+  // Facilities.
+  new Facility("New York City", ["city=New York City"], [-74.0060, 40.7128], 1, 3, m);
+  m.currentLocality = ["city=New York City"];
+
+  // Create tables, with a mix of spanning and local zone configs.
+
+  // App1 lives in NYC datacenter.
+  var dcConfig = [[], [], []];
+  var salesDB = new Database("Sales", m);
+  new Table("Registration", dcConfig, m.splitSize * 1, salesDB, m);
+  new Table("Products", dcConfig, m.splitSize * 3, salesDB, m);
+  new Table("Orders", dcConfig, m.splitSize * 8, salesDB, m);
+  new Table("Details", dcConfig, m.splitSize * 12, salesDB, m);
+  for (var i = 0; i < 50; i++) {
+    new App(["*"], m.tables, m);
+  }
+
+  addModel(m);
+}, function(m) {
+}, function(m) {
+  // Five additional nodes.
+  for (var i = 0; i < 5; i++) {
+    m.facilities[0].addNode(0, 3+i);
+  }
+});
+
+</script>
+
+  <h2>Stage 4: Provide enterprise SLAs</h2>
+  <p>You have a fast-growing business and CockroachDB has allowed you
+    to scale within your primary datacenter (in this example, it&#39;s
+    located in New York City). Whether your business is B2C and
+    you&#39;ve reached critical mass, or B2B and you&#39;ve landed
+    some big enterprise customers, at some point the pressures on your
+    data architecture will again expand. This time, with more
+    stringent requirements around service level agreements.  In other
+    words, you really can&#39;t allow the system to go down because of
+    a facility outage.
+  <p>To accomplish this, data must be replicated not just within a
+    facility, but across facilities. You need some level of
+    geo-replication. There is a cost to geo-replication, especially
+    when done with quorum-based replication (like Raft). The cost you
+    pay is latency, because for a write to become permanent, a
+    majority of replication sites must acknowledge it. This means that
+    writes have a minimum latency equal to the second slowest
+    communication link between replication sites (in the case of three
+    replicas). In practice, you want to choose facilities which are
+    relatively close: within 30ms of each other, but probably not
+    across the globe. However, you also want to balance proximity with
+    geo-diversity, such that you minimize correlated failures
+    (i.e. avoid doubling up on power sources or fiber backbones).
+
+  <div id="SLA" class="model"></div>
+
+  <script>
+
+var slaModel = null;
+function toggleFacilityState(name) {
+  for (var i = 0; i < slaModel.localities.length; i++) {
+    console.log(slaModel.localities[i].name);
+    if (slaModel.localities[i].name == name) {
+      slaModel.localities[i].toggleState();
+      return;
+    }
+  }
+  alert("Toggle facility status when zoomed out (use the browser back button).");
+}
+
+new Model("SLA", viewWidth, viewHeight * 1, function(m) {
+  slaModel = m;
+  m.projection = d3.geo.mercator();
+  m.nodeCapacity = 150;
+  m.skin = new Localities();
+  m.enablePlayAndReload = false;
+  m.enableAddNodeAndApp = false;
+  m.displaySimState = false;
+  m.startExplanationHTML = `
+  <div class="explanation-text">
+    <b>The simulation below</b> shows a five node cluster, with nodes
+    in a facility located in New York City. Ranges for each table are
+    replicated 3x ("triplicated") amongst the five nodes. Click the
+    button below to add two additional facilities, each with five
+    nodes. One will be in Atlanta, Georgia; the other in Des Moines, Iowa.
+    Additionally, the replication configuration for the table will change
+    to require that one replica is in NYC, one in Des Moines, and one
+    in Atlanta.
+`;
+  m.nextStepHTML = "Geo-Replicate to Two New Facilities";
+  m.nextStepExplanationHTML = `
+  <div class="explanation-text">
+    By adding two additional facilities, the cluster is now able to
+    geo-replicate data, such that the database can withstand the loss
+    of an entire facility. Notice that it is very busily rebalancing
+    data. Keep in mind that it&#39;s able to move more data than we were
+    previously seeing between single nodes because each of the shown
+    facilities contain five nodes.
+
+    <p>
+      <b>Tip</b>: Click on a facility to zoom into the individual
+      nodes view. Use the back button on the browser (or the escape
+      key) to return to the pan-United States view.
+    <p><b>Extra</b>: Simulate facility failures by toggling the states for:
+      <button class="extras-button" onclick="toggleFacilityState('New York City')">New York City</button>,&nbsp;
+      <button class="extras-button" onclick="toggleFacilityState('Atlanta')">Atlanta</button>,&nbsp;
+      <button class="extras-button" onclick="toggleFacilityState('Des Moines')">Des Moines</button>.
+      Note that because Raft requires a quorum to make forward progress,
+      all writes will cease if more than one node is down simultaneously.
+  </div>
+  `;
+
+  // Facilities.
+  new Facility("New York City", ["city=New York City"], [-74.0060, 40.7128], 1, 5, m);
+  m.currentLocality = ["city=New York City"];
+
+  // Create tables, with a mix of spanning and local zone configs.
+
+  var dcConfig = [[], [], []];
+  var salesDB = new Database("Sales", m);
+  new Table("Registration", dcConfig, m.splitSize * 1, salesDB, m);
+  new Table("Products", dcConfig, m.splitSize * 3, salesDB, m);
+  new Table("Orders", dcConfig, m.splitSize * 8, salesDB, m);
+  new Table("Details", dcConfig, m.splitSize * 12, salesDB, m);
+  for (var i = 0; i < 20; i++) {
+    new App(["*"], m.tables, m);
+  }
+
+  addModel(m);
+}, function(m) {
+}, function(m) {
+  new Facility("Atlanta", ["city=Atlanta"], [-84.3880, 33.7490], 1, 5, m);
+  new Facility("Des Moines", ["city=Des Moines"], [-93.6091, 41.6005], 1, 5, m);
+  var usSpanningConfig = [["city=New York City"], ["city=Atlanta"], ["city=Des Moines"]];
+  for (var i = 0; i < m.tables.length; i++) {
+    m.tables[i].setZoneConfig(usSpanningConfig);
+  }
+  m.currentLocality = [];
+});
+
+  </script>
+
+  <h2>Stage 5: Service global customers</h2>
+  <p>Your business has grown to the point where you must service
+    customers internationally. These days, this situation can just as
+    easily apply to a fast-growing startup company as a multi-national
+    enterprise. How do you solve the thorny issues around latency and
+    data sovereignty? The old way of doing things was to run a primary
+    facility on the East Coast of the United States, with a secondary
+    facility ready as a hot standby. But customers, whether they&#39;re
+    individual consumers of your online game, or other companies using
+    your SaaS offering, are becoming less satisfied with the status quo.
+    The two big challenges which need to be solved are service latency
+    and customer data domiciling preferences.
+  <p>With the EU&#39;s <a href="https://www.eugdpr.org/">GDPR</a>
+    regulations coming into effect in May of 2018, and many other
+    countries following suit, personal data privacy is an issue whose
+    time has come. In particular, companies must get a very explicit
+    consent from a customer when personal data will leave their
+    jurisdiction for processing or storage. Companies that fail to
+    provide for local data domiciling can expect hefty fines, the loss
+    of their customers, or both.
+  <p>One solution is to break up your global service into individual
+    regional services, but this is expensive operationally and greatly
+    compounds complexity for your application developers. Your
+    customers likely still expect you to be providing a global
+    service. They move, they interact with other customers across
+    regions. These are difficult problems to solve at the application
+    layer.
+  <p><b>Enter geopartioning</b>. Database partioning isn&#39;t a new
+    concept. RDBMSs like Oracle, SQLServer, and Postgres allow you to
+    partition tables, mostly in order to manage the size of active
+    data so that it can be quickly restored. CockroachDB has from the
+    first version been able to replicate different databases or tables
+    to different replication sites within a cluster. Geopartitioning
+    allows <i>row-level</i> control of replication. So, for example, a
+    table might be partitioned based on its "region" column,
+    containing values like "us-ca", "eu-de", "eu-fr", and "cn-bj". Any
+    rows with region="eu-de" might be replicated within a facility in
+    Germany, or across three facility in Germany, whereas rows with
+    region="cn-bj" might be replicated to three facility near Beijing,
+    or even across China.
+
+  <div id="global" class="model"></div>
+
+  <script>
+
+var globalModel = null;
+
+new Model("global", viewWidth, viewHeight * 1, function(m) {
+  globalModel = m;
+  m.projection = d3.geo.mercator();
+  m.skin = new Localities();
+  m.nodeCapacity = 40;
+  m.enablePlayAndReload = false;
+  m.enableAddNodeAndApp = false;
+  m.displaySimState = false;
+  m.startExplanationHTML = `
+  <div class="explanation-text">
+    <b>The simulation below</b> shows a CockroachDB cluster which is
+    currently replicating all data across three facilities in the
+    United States. Click the button below to expand this cluster to
+    include <b>six</b> additional <b>facilities</b>, three in the
+    European Union, and three in China. In the EU, the facilities are
+    located in London, Berlin, and Stockholm. In China, the facilities
+    are located in Beijing, Shanghai, and Shenzhen.
+`;
+    m.nextStepHTML = "Geo-Partition Across Three Continents";
+  m.nextStepExplanationHTML = `
+  <div class="explanation-text">
+    <img src="explain2.png" class="explain-img" style="margin: 0px 0px 20px 20px"/> In addition to
+    expanding the cluster to the European Union and China, the
+    replication configuration for the database schema has been changed
+    so that it partitions on a region column. With the addition of new
+    facilities, partitions with EU data are rebalanced across London,
+    Berlin, and Stockholm; partitions with Chinese data are rebalanced
+    across Beijing, Shanghai, and Shenzhen. The image to the right
+    shows the state of the tables at the moment that the
+    geo-partitioning configuration is set. Note that all of the table
+    data is stored in the United States to start and must migrate to
+    the EU and China, as appropriate. The "Registration" table is the
+    only one which isn't geo-partitioned. It is instead globally
+    replicated. This is typical for a global data architecture. The
+    bulk of customer-facing data is local to that customer's region,
+    but the service still requires some globally replicated data to
+    serve as a "control plane".
+    <p>
+      <b>Tip</b>: Click on a region to zoom into the region and view the
+      facilities. Click on a facility to zoom into the individual
+      nodes view.
+    <p>
+      <b>Tip</b>: Geo-partitioning provides for region-based replication
+      policies, so that ranges in each partitioned table belonging to a
+      specific region are replicated only within that region.
+      <button class="extras-button" onclick="zoomToLocality(globalModel,750,['region=European Union'],true)">Zoom
+        into the European Union</button>, for example, to see how
+      European personal data in the Products, Orders, and Details
+      tables is replicated (denoted by shades of green in this
+      simulation). The three replicas for green ranges will be
+      replicated across London, Berlin and Stockholm.
+      <button class="extras-button" onclick="zoomToLocality(globalModel,750,['region=China'],true)">Zoom
+        into China</button> to see how Chinese
+      personal data in the Products, Orders and Details tables is
+      replicated (denoted by shades of red in this simulation). Notice
+      that each range in those tables is replicated across Beijing,
+      Shanghai, and Shenzhen.
+    <p>
+      <b>Note</b> that very little inter-regional replication traffic
+      continues after the rebalancing is complete. This is because US,
+      EU, and Chinese data is replicated intra-regionally. Only the
+      Registration table in this datamodel is replicated across
+      regions. If you click to zoom into a region, you&#39;ll notice
+      there&#39;s significant intra-regional traffic, as most client
+      requests will be for the three partitioned tables. A request
+      which writes to a particular partition is replicated only within
+      the partition&#39;s region.
+  </div>
+  `;
+
+  // Facilities.
+  new Facility("New York City", ["region=United States", "city=New York City"], [-74.0060, 40.7128], 1, 5, m);
+  new Facility("Atlanta", ["region=United States", "city=Atlanta"], [-84.3880, 33.7490], 1, 5, m);
+  new Facility("Des Moines", ["region=United States", "city=Des Moines"], [-93.6091, 41.6005], 1, 5, m);
+  m.currentLocality = ["region=United States"];
+
+  var usSpanningConfig = [["city=New York City"], ["city=Atlanta"], ["city=Des Moines"]];
+  var salesDB = new Database("Sales", m);
+
+  m.registration = new Table("Registration", usSpanningConfig, m.splitSize * 1, salesDB, m);
+  m.color(undefined, m.registration.name);
+
+  m.products = new Table("Products", usSpanningConfig, m.splitSize * 3, salesDB, m);
+  m.orders = new Table("Orders", usSpanningConfig, m.splitSize * 8, salesDB, m);
+  m.details = new Table("Details", usSpanningConfig, m.splitSize * 12, salesDB, m);
+  m.partitioned = [m.products, m.orders, m.details];
+  // Access the colors in a consistent ordering so that CN is red, EU
+  // is green and US is blue.
+  var regions = ["US", "EU", "CN"];
+  for (var i = 0; i < regions.length; i++) {
+    for (var j = 0; j < m.partitioned.length; j++) {
+    var table = m.partitioned[i];
+      m.color(regions[i], table.name);
+      // Set regions for all ranges; divide roughly into thirds.
+      for (var j = 0; j < table.ranges.length; j++) {
+        if (j < table.ranges.length / 3) {
+          table.ranges[j].region = "US";
+        } else if (j < table.ranges.length * 2 / 3) {
+          table.ranges[j].region = "EU";
+        } else {
+          table.ranges[j].region = "CN";
+        }
+      }
+    }
+  }
+  for (var i = 0; i < 20; i++) {
+    new App(["region=United States"], m.tables, m);
+  }
+
+  addModel(m);
+}, function(m) {
+}, function(m) {
+  new Facility("London", ["region=European Union", "city=London"], [-0.1278, 51.5074], 1, 5, m);
+  new Facility("Berlin", ["region=European Union", "city=Berlin"], [13.4050, 52.5200], 1, 5, m);
+  new Facility("Stockholm", ["region=European Union", "city=Stockholm"], [18.0686, 59.3293], 1, 5, m);
+  new Facility("Beijing", ["region=China", "city=Beijing"], [116.4074, 39.9042], 1, 5, m);
+  new Facility("Shanghai", ["region=China", "city=Shanghai"], [121.4737, 31.2304], 1, 5, m);
+  new Facility("Shenzhen", ["region=China", "city=Shenzhen"], [114.0579, 22.5431], 1, 5, m);
+
+  var globeSpanningConfig = [["region=United States"], ["region=European Union"], ["region=China"]];
+  m.registration.setZoneConfig(globeSpanningConfig);
+
+  // Partition tables.
+  var partitionedConfig = {
+    "CN": [["city=Beijing"], ["city=Shanghai"], ["city=Shenzhen"]],
+    "EU": [["city=London"], ["city=Berlin"], ["city=Stockholm"]],
+    "US": [["city=New York City"], ["city=Atlanta"], ["city=Des Moines"]],
+  };
+  for (var i = 0; i < m.partitioned.length; i++) {
+    m.partitioned[i].setZoneConfig(partitionedConfig);
+  }
+  for (var i = 0; i < 20; i++) {
+    new App(["region=European Union"], m.tables, m).start();
+    new App(["region=China"], m.tables, m).start();
+  }
+
+  m.currentLocality = [];
+});
+
+</script>
+</body>
